@@ -1,5 +1,69 @@
 # Day 10: Password Security and Group Management
 
+## Understanding /etc/shadow File
+
+The `/etc/shadow` file contains encrypted passwords and account expiration information. Each line has nine fields:
+
+1. Username
+   - Login name of the user
+   - Must match username in /etc/passwd
+
+2. Encrypted Password
+   - Password hash (starts with $6$ for SHA-512)
+   - $1$ for MD5
+   - $2a$ for Blowfish
+   - $5$ for SHA-256
+   - !! or * means account is locked
+   - Empty field means no password required
+
+3. Last Password Change
+   - Days since epoch (Jan 1, 1970)
+   - 0 means change required at next login
+   - Empty means password aging disabled
+
+4. Minimum Password Age
+   - Minimum days between password changes
+   - 0 means no minimum
+   - Empty means no minimum
+
+5. Maximum Password Age
+   - Days until password expires
+   - 99999 means never expires
+   - Empty means no maximum
+
+6. Password Warning Period
+   - Days before expiration to warn user
+   - 0 means no warning
+   - Empty means no warning
+
+7. Password Inactivity Period
+   - Days after expiration until account is disabled
+   - 0 means disabled immediately
+   - Empty means no inactivity period
+
+8. Account Expiration Date
+   - Days since epoch when account expires
+   - Empty means never expires
+   - After expiration, account is disabled
+
+9. Reserved Field
+   - Reserved for future use
+   - Currently unused
+
+Example line with explanation:
+
+```john:$6$xyz123...:18000:0:99999:7:::```
+
+- Username: john
+- Password: SHA-512 encrypted
+- Last change: 18000 days since epoch
+- Min age: 0 (no minimum)
+- Max age: 99999 (never expires)
+- Warning: 7 days
+- Inactivity: disabled
+- Expiration: never
+- Reserved: unused
+
 ## Linux Groups
 
 ### Introduction to Groups
