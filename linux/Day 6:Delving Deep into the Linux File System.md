@@ -4,6 +4,39 @@
 
 The Linux file system hierarchy follows the Filesystem Hierarchy Standard (FHS), which defines the directory structure and contents in Linux and Unix-like operating systems.
 
+## Visual Representation of Linux File System Hierarchy
+
+```
+/
+├── bin/          # Essential command binaries
+├── boot/         # Boot loader files
+├── dev/          # Device files
+├── etc/          # System configuration files
+├── home/         # User home directories
+├── lib/          # Shared libraries
+├── media/        # Removable media mount points
+├── mnt/          # Temporary mount points
+├── opt/          # Optional application software
+├── proc/         # Process and kernel information
+├── root/         # Root user home directory
+├── run/          # Runtime variable data
+├── sbin/         # System administration binaries
+├── srv/          # Service data
+├── sys/          # System information
+├── tmp/          # Temporary files
+├── usr/          # User programs and data
+│   ├── bin/      # User commands
+│   ├── lib/      # User libraries
+│   ├── local/    # Local software
+│   ├── sbin/     # System commands
+│   └── share/    # Shared data
+└── var/          # Variable data
+    ├── log/      # Log files
+    ├── cache/    # Cache files
+    ├── spool/    # Spool files
+    └── mail/     # Mail files
+```
+
 ## Root Directory (/)
 
 The root directory is the top-level directory of the file system hierarchy. All other directories are subdirectories of the root.
