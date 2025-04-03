@@ -1,4 +1,4 @@
-# Day 7: File Copy and Vim Editor
+# Day 7&Day8:  Mastering Text Editing with VIM
 
 ## File Copy Command
 
