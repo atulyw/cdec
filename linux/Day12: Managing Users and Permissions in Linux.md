@@ -301,7 +301,149 @@ username ALL=(ALL) LOG_INPUT:LOG_OUTPUT /usr/bin/rm
    sudo cat /var/log/auth.log | grep sudo
    ```
 
-## sudo Command Syntax and Examples
+## Understanding Umask and Default Permissions
 
-### Basic Syntax
+### Default Permissions
+1. **Regular User Defaults**
+   - Files: rw-rw-r-- (664)
+   - Directories: rwxrwxr-x (775)
+
+2. **Root User Defaults**
+   - Files: rw-r--r-- (644)
+   - Directories: rwxr-xr-x (755)
+
+### Default Permission Table
+| User Type | Directory | File |
+|-----------|-----------|------|
+| Root | 755 (rwxr-xr-x) | 644 (rw-r--r--) |
+| Standard User | 775 (rwxrwxr-x) | 664 (rw-rw-r--) |
+
+### Understanding Umask
+```bash
+# View current umask
+umask
+
+# Default umask values:
+# Root user: 0022
+# Standard user: 0002
 ```
+
+### Calculating Permissions with Umask
+1. **Root User Calculations**
+   ```bash
+   # Directory: 777 - 022 = 755
+   # File: 666 - 022 = 644
+   ```
+
+2. **Standard User Calculations**
+   ```bash
+   # Directory: 777 - 002 = 775
+   # File: 666 - 002 = 664
+   ```
+
+### Changing Umask Value
+
+#### Temporary Change
+```bash
+# Set umask to 000
+umask 000
+
+# Create directory to test
+mkdir demo
+
+# Check permissions
+ls -l
+# Expected output: drwxrwxrwx. 2 root root 6 May 29 12:34 demo
+```
+
+#### Permanent Change
+```bash
+# Edit /etc/profile
+vim /etc/profile
+
+# Find and modify these lines:
+if [ $UID -gt 199 ] && [ "`/usr/bin/id -gn`" = "`/usr/bin/id -un`" ]; then
+    umask 002    # For standard users
+else
+    umask 000    # For root user
+fi
+
+# Save and apply changes
+:wq
+source /etc/profile
+
+# Verify new umask
+umask
+# Expected output: 0000
+```
+
+### Common Umask Values and Their Effects
+```bash
+# 0000 (777 for directories, 666 for files)
+umask 0000
+# Results in: drwxrwxrwx for directories, -rw-rw-rw- for files
+
+# 0022 (755 for directories, 644 for files)
+umask 0022
+# Results in: drwxr-xr-x for directories, -rw-r--r-- for files
+
+# 0002 (775 for directories, 664 for files)
+umask 0002
+# Results in: drwxrwxr-x for directories, -rw-rw-r-- for files
+
+# 0077 (700 for directories, 600 for files)
+umask 0077
+# Results in: drwx------ for directories, -rw------- for files
+```
+
+### Best Practices for Umask
+1. **Security Considerations**
+   - Use restrictive umask for sensitive data
+   - Consider user roles and access needs
+   - Regular umask audits
+   - Document changes
+
+2. **Common Use Cases**
+   - Development environments (002)
+   - Production servers (022)
+   - Private directories (077)
+   - Shared workspaces (002)
+
+3. **Troubleshooting**
+   ```bash
+   # Check current umask
+   umask
+
+   # Check system-wide umask
+   cat /etc/profile | grep umask
+
+   # Check user-specific umask
+   cat ~/.bashrc | grep umask
+
+   # Verify permissions after umask change
+   touch testfile
+   mkdir testdir
+   ls -l
+   ```
+
+### Important Notes
+1. **Umask Calculation**
+   - Directory permissions start at 777
+   - File permissions start at 666
+   - Umask is subtracted from these values
+
+2. **Security Impact**
+   - Lower umask = more permissive
+   - Higher umask = more restrictive
+   - Consider security implications
+
+3. **Environment Variables**
+   - Umask can be set in various files:
+     - /etc/profile (system-wide)
+     - ~/.bashrc (user-specific)
+     - /etc/bashrc (bash-specific)
+
+4. **Application to New Files**
+   - Only affects newly created files
+   - Does not modify existing files
+   - Use chmod for existing files 
