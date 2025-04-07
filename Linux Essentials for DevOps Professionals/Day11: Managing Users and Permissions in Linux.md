@@ -55,6 +55,34 @@
   - Access directory contents
   - Change into directory
   - Search directory
+### Dependent Permissions
+1. **Directory Permissions Dependencies**
+   ```bash
+   # To access a directory's contents:
+   - Requires 'r' permission to list contents
+   - Requires 'x' permission to access files inside
+   - Without 'x': Can see files but cannot access them
+   - Without 'r': Cannot list contents even with 'x'
+   
+   # To modify directory contents:
+   - Requires 'w' permission to create/delete files
+   - Requires 'x' permission to access the directory
+   - Without 'x': Cannot create/delete even with 'w'
+   ```
+
+2. **File Permission Dependencies**
+   ```bash
+   # To execute a file:
+   - Requires 'x' permission on the file
+   - Requires 'x' permission on all parent directories
+   - Without directory 'x': Cannot execute even with file 'x'
+   
+   # To modify a file:
+   - Requires 'w' permission on the file
+   - Requires 'x' permission on parent directory
+   - Without directory 'x': Cannot modify even with file 'w'
+   ```
+
 
 ## How Permissions are Displayed with ls -l
 
