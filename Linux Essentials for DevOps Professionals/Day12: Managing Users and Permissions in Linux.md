@@ -377,6 +377,25 @@ umask
 # Expected output: 0000
 ```
 
+#### Permanent Change for Individual User
+```bash
+# Edit user's .profile file
+vim ~/.profile
+
+# Add this line at the end of the file:
+umask 002    # Set umask for individual user
+
+# Save and apply changes
+:wq
+source ~/.profile
+
+# Verify new umask
+umask
+# Expected output: 0002
+```
+
+Note: The umask value in ~/.profile will override the system-wide umask setting in /etc/profile for that specific user.
+
 ### Common Umask Values and Their Effects
 ```bash
 # 0000 (777 for directories, 666 for files)
