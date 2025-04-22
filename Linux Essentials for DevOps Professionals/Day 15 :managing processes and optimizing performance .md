@@ -141,6 +141,39 @@ KiB Swap:  1048576 total,  1048576 free,        0 used.  1100000 avail Mem
 
 ### 3. Process Priority Management
 
+#### Understanding Process Priority
+- Every process in Linux has a priority value (also called nice value)
+- Priority range: -20 (highest priority) to 19 (lowest priority)
+- Default priority: 0 (nice value of 0)
+- Lower nice value = Higher priority
+- Higher nice value = Lower priority
+- Only root can set negative nice values (higher priority)
+- Regular users can only increase nice values (lower priority)
+
+#### Nice Value and CPU Scheduling
+- Nice value affects how much CPU time a process gets
+- Processes with lower nice values get more CPU time
+- Processes with higher nice values get less CPU time
+- The scheduler uses nice values to determine process priority
+- Nice values are inherited by child processes
+
+#### `nice` Command
+- Used to start a process with a specific nice value
+- Syntax: `nice -n [value] command`
+- Value range: -20 to 19
+- Default increment: 10 (if no value specified)
+- Regular users can only increase nice values
+- Root can set any nice value
+
+#### `renice` Command
+- Used to change nice value of running processes
+- Syntax: `renice -n [value] -p PID`
+- Can change priority of multiple processes
+- Can change priority of process groups
+- Can change priority of all processes owned by a user
+- Root privileges required for negative nice values
+
+
 #### `nice` and `renice`
 ```bash
 # Start process with specific priority
