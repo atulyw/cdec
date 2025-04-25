@@ -48,6 +48,13 @@ fg
 jobs
 ```
 
+```
+cat > filename.txt <<EOF
+This is the first line of the file.
+This is the second line.
+EOF (Ctrl+D)
+```
+
 #### Job Control Commands
 | Command | Description |
 |---------|-------------|
