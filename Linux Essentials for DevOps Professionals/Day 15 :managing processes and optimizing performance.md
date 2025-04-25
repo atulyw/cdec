@@ -182,6 +182,9 @@ nice -n 10 command
 # Change priority of running process
 renice -n -10 -p PID
 ```
+#### Advanced Process Monitoring with `ps -eo`
+The `ps -eo` command allows you to customize the output format and select specific fields to monitor. This is particularly useful for performance monitoring and process management.
+
 ##### Basic Syntax
 ```bash
 ps -eo pid,user,ni,comm,%cpu,%mem
