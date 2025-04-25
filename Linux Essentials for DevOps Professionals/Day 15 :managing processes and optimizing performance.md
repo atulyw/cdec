@@ -182,6 +182,30 @@ nice -n 10 command
 # Change priority of running process
 renice -n -10 -p PID
 ```
+##### Basic Syntax
+```bash
+ps -eo pid,user,ni,comm,%cpu,%mem
+```
+
+##### Field Descriptions
+| Field | Description |
+|-------|-------------|
+| pid | Process ID |
+| user | Username of process owner |
+| ni | Nice value (process priority) |
+| comm | Command name |
+| %cpu | CPU usage percentage |
+| %mem | Memory usage percentage |
+
+##### Example Output
+```bash
+$ ps -eo pid,user,ni,comm,%cpu,%mem | head -5
+  PID USER      NI COMMAND         %CPU %MEM
+    1 root       0 systemd         0.0  0.1
+    2 root       0 kthreadd        0.0  0.0
+    3 root       0 ksoftirqd/0     0.0  0.0
+    4 root       0 kworker/0:0H    0.0  0.0
+```
 
 #### Examples of Priority Management
 ```bash
