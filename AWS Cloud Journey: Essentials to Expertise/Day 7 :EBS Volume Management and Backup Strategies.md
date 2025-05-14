@@ -103,8 +103,6 @@ Xen is a type-1 hypervisor that provides virtualization services for multiple op
 
 ## Visual Representation of Partition Types
 
-![Partition Layout: Primary, Extended, and Logical Partitions](./partition-diagram.png)
-
 *Figure: Example of a 10GB hard disk with three primary partitions (1GB each) and one extended partition (7GB) containing multiple logical partitions. Note the reserved sectors for metadata and inode tables, and the maximum number of logical partitions (e.g., 60 in RHEL 7).*
 
 ```
