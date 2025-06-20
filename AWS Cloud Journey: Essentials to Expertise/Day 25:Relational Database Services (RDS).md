@@ -597,3 +597,19 @@ SHOW GRANTS;
 - Monitor performance metrics
 - Optimize queries and indexes
 - Use connection pooling 
+
+
+### RDS Configuration Groups
+
+#### Parameter Groups vs Option Groups
+
+| Feature          | **Parameter Group**                              | **Option Group**                                    |
+| ---------------- | ------------------------------------------------ | --------------------------------------------------- |
+| What it controls | Engine settings (variables) like memory, timeout | Extra features (plugins/tools) like TDE, S3 restore |
+| Common engines   | All RDS engines                                  | Oracle, SQL Server, MySQL                           |
+| Reboot required? | Sometimes                                        | Often                                               |
+| Example          | `max_connections = 1000`                         | `TDE` encryption, `SSIS`                            |
+
+**Parameter Groups** are used to configure database engine parameters like memory allocation, connection limits, and query timeouts. They are available for all RDS engines and may require a reboot depending on the parameter being changed.
+
+**Option Groups** are used to enable additional features and plugins that extend the database functionality, such as Transparent Data Encryption (TDE), SQL Server Integration Services (SSIS), or Oracle Advanced Security. They are primarily available for Oracle, SQL Server, and MySQL engines.
