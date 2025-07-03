@@ -90,6 +90,7 @@ git add <file1> <file2> <file3>
 
 # Add all files with specific extension
 git add *.js
+#new line added
 
 # Add all modified files (not untracked)
 git add -u
