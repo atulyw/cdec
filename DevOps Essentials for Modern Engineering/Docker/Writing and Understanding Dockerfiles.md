@@ -590,6 +590,36 @@ EXPOSE 3000
 CMD ["node", "app.js"]
 ```
 
+### Example 2: Simple Maven to JAR
+```dockerfile
+# Build stage
+FROM maven:3.8-openjdk-11 AS builder
+WORKDIR /build
+
+# Copy pom.xml and download dependencies
+COPY pom.xml .
+RUN mvn dependency:go-offline
+
+# Copy source code
+COPY src/ ./src/
+
+# Build the application
+RUN mvn clean package -DskipTests
+
+# Production stage
+FROM openjdk:11-jre-slim
+WORKDIR /app
+
+# Copy JAR from build stage
+COPY --from=builder /build/target/*.jar app.jar
+
+# Expose port
+EXPOSE 8080
+
+# Start application
+CMD ["java", "-jar", "app.jar"]
+```
+
 #### Benefits
 - Smaller final image
 - Better security (no build tools in production)
