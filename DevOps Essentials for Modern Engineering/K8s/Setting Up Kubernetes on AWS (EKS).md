@@ -740,9 +740,461 @@ minikube stop && minikube start
 ```
 ---
 
-## Conclusion
+## Basic Cluster Operations and Commands
 
-Using eksctl with configuration files provides a declarative and reproducible way to create EKS clusters. This approach offers several advantages:
+### Cluster Information and Status
+
+#### Getting Cluster Information
+```bash
+# Get cluster information
+kubectl cluster-info
+
+# Get detailed cluster information
+kubectl cluster-info dump
+
+# Get cluster version
+kubectl version
+
+# Get client and server versions
+kubectl version --short
+
+# Get cluster configuration
+kubectl config view
+
+# Get current context
+kubectl config current-context
+
+# List all contexts
+kubectl config get-contexts
+
+# Get cluster name
+kubectl config view --minify --output 'jsonpath={..cluster}'
+```
+
+#### Cluster Health and Status
+```bash
+# Check cluster health
+kubectl get componentstatuses
+
+# Get cluster events
+kubectl get events --all-namespaces
+
+# Get cluster metrics (requires metrics-server)
+kubectl top nodes
+kubectl top pods --all-namespaces
+
+# Check API server health
+kubectl get --raw '/healthz'
+
+# Check etcd health
+kubectl get --raw '/healthz/etcd'
+```
+
+### Node Operations
+
+#### Listing and Managing Nodes
+```bash
+# List all nodes
+kubectl get nodes
+
+# List nodes with more details
+kubectl get nodes -o wide
+
+# List nodes with custom output format
+kubectl get nodes -o custom-columns=NAME:.metadata.name,STATUS:.status.conditions[0].type,VERSION:.status.nodeInfo.kubeletVersion
+
+# Get detailed information about a specific node
+kubectl describe node <node-name>
+
+# Get node YAML
+kubectl get node <node-name> -o yaml
+
+# Label a node
+kubectl label nodes <node-name> environment=production
+
+# Remove label from node
+kubectl label nodes <node-name> environment-
+
+# Taint a node
+kubectl taint nodes <node-name> key=value:NoSchedule
+
+# Remove taint from node
+kubectl taint nodes <node-name> key:NoSchedule-
+
+# Cordon a node (prevent scheduling)
+kubectl cordon <node-name>
+
+# Uncordon a node (allow scheduling)
+kubectl uncordon <node-name>
+
+# Drain a node (move pods to other nodes)
+kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
+
+# Get node metrics
+kubectl top node <node-name>
+```
+
+#### Node Resource Information
+```bash
+# Get node capacity and allocatable resources
+kubectl describe node <node-name> | grep -A 5 "Capacity\|Allocatable"
+
+# Get pods running on a specific node
+kubectl get pods --all-namespaces -o wide --field-selector spec.nodeName=<node-name>
+
+# Get node conditions
+kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
+```
+
+### Namespace Operations
+
+#### Managing Namespaces
+```bash
+# List all namespaces
+kubectl get namespaces
+kubectl get ns
+
+# Create a namespace
+kubectl create namespace <namespace-name>
+
+# Delete a namespace
+kubectl delete namespace <namespace-name>
+
+# Get namespace details
+kubectl describe namespace <namespace-name>
+
+# Get namespace YAML
+kubectl get namespace <namespace-name> -o yaml
+
+# Label a namespace
+kubectl label namespace <namespace-name> environment=production
+
+# Annotate a namespace
+kubectl annotate namespace <namespace-name> description="Production environment"
+```
+
+#### Working with Namespaces
+```bash
+# List all resources in a namespace
+kubectl get all -n <namespace-name>
+
+# List specific resources in namespace
+kubectl get pods,services,deployments -n <namespace-name>
+
+# Get resource counts by namespace
+kubectl get pods --all-namespaces --no-headers | awk '{print $1}' | sort | uniq -c
+
+# Delete all resources in a namespace
+kubectl delete all --all -n <namespace-name>
+
+# Copy resources between namespaces
+kubectl get deployment <deployment-name> -n <source-namespace> -o yaml | \
+  sed 's/namespace: <source-namespace>/namespace: <target-namespace>/' | \
+  kubectl apply -f -
+```
+
+### Context Management (kubectx)
+
+#### Installing kubectx
+```bash
+# macOS
+brew install kubectx
+
+# Linux
+sudo git clone https://github.com/ahmetb/kubectx /opt/kubectx
+sudo ln -s /opt/kubectx/kubectx /usr/local/bin/kubectx
+sudo ln -s /opt/kubectx/kubens /usr/local/bin/kubens
+
+# Windows (using Chocolatey)
+choco install kubectx
+```
+
+#### Using kubectx
+```bash
+# List all contexts
+kubectx
+
+# Switch to a specific context
+kubectx <context-name>
+
+# Switch to previous context
+kubectx -
+
+# Rename a context
+kubectx <old-name>=<new-name>
+
+# Delete a context
+kubectx -d <context-name>
+
+# Show current context
+kubectx -c
+
+# Interactive context selection
+kubectx -i
+```
+
+#### Context Operations with kubectl
+```bash
+# List all contexts
+kubectl config get-contexts
+
+# Switch context
+kubectl config use-context <context-name>
+
+# Get current context
+kubectl config current-context
+
+# Delete context
+kubectl config delete-context <context-name>
+
+# Rename context
+kubectl config rename-context <old-name> <new-name>
+
+# Set context
+kubectl config set-context <context-name> --cluster=<cluster-name> --user=<user-name> --namespace=<namespace>
+```
+
+### Namespace Management (kubens)
+
+#### Using kubens
+```bash
+# List all namespaces
+kubens
+
+# Switch to a specific namespace
+kubens <namespace-name>
+
+# Switch to previous namespace
+kubens -
+
+# Show current namespace
+kubens -c
+
+# Interactive namespace selection
+kubens -i
+```
+
+#### Namespace Operations with kubectl
+```bash
+# Set default namespace for current context
+kubectl config set-context --current --namespace=<namespace-name>
+
+# Get current namespace
+kubectl config view --minify --output 'jsonpath={..namespace}'
+
+# Create namespace with YAML
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: <namespace-name>
+  labels:
+    name: <namespace-name>
+EOF
+```
+
+### Resource Queries and Filtering
+
+#### Advanced Resource Listing
+```bash
+# List resources with labels
+kubectl get pods -l app=nginx
+
+# List resources with multiple labels
+kubectl get pods -l app=nginx,environment=production
+
+# List resources excluding labels
+kubectl get pods -l '!app'
+
+# List resources with field selectors
+kubectl get pods --field-selector status.phase=Running
+
+# List resources by namespace
+kubectl get pods --all-namespaces
+
+# List resources with custom columns
+kubectl get pods -o custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.spec.nodeName
+
+# List resources with wide output
+kubectl get pods -o wide
+
+# List resources in YAML format
+kubectl get pods -o yaml
+
+# List resources in JSON format
+kubectl get pods -o json
+
+# List resources with specific fields
+kubectl get pods -o jsonpath='{.items[*].metadata.name}'
+```
+
+#### Resource Filtering and Searching
+```bash
+# Get resources by name pattern
+kubectl get pods | grep nginx
+
+# Get resources by status
+kubectl get pods --field-selector status.phase!=Running
+
+# Get resources by node
+kubectl get pods --field-selector spec.nodeName=<node-name>
+
+# Get resources by service account
+kubectl get pods --field-selector spec.serviceAccountName=<service-account-name>
+
+# Get resources by image
+kubectl get pods -o jsonpath='{range .items[?(@.spec.containers[*].image=="nginx:latest")]}{.metadata.name}{"\n"}{end}'
+```
+
+### Cluster Diagnostics and Troubleshooting
+
+#### Cluster Health Checks
+```bash
+# Check all component statuses
+kubectl get componentstatuses
+
+# Check API server health
+kubectl get --raw '/healthz'
+
+# Check etcd health
+kubectl get --raw '/healthz/etcd'
+
+# Check scheduler health
+kubectl get --raw '/healthz/scheduler'
+
+# Check controller manager health
+kubectl get --raw '/healthz/controller-manager'
+
+# Get cluster events
+kubectl get events --all-namespaces --sort-by='.lastTimestamp'
+
+# Get recent events
+kubectl get events --all-namespaces --sort-by='.lastTimestamp' | tail -20
+```
+
+#### Resource Usage and Monitoring
+```bash
+# Get node resource usage
+kubectl top nodes
+
+# Get pod resource usage
+kubectl top pods --all-namespaces
+
+# Get pod resource usage in specific namespace
+kubectl top pods -n <namespace-name>
+
+# Get resource usage for specific pod
+kubectl top pod <pod-name> -n <namespace-name>
+
+# Get resource requests and limits
+kubectl get pods -o custom-columns=NAME:.metadata.name,CPU_REQ:.spec.containers[*].resources.requests.cpu,MEM_REQ:.spec.containers[*].resources.requests.memory
+```
+
+### Cluster Configuration and Management
+
+#### Kubeconfig Operations
+```bash
+# View current kubeconfig
+kubectl config view
+
+# View specific context
+kubectl config view --minify
+
+# View kubeconfig in YAML
+kubectl config view --raw
+
+# Set kubeconfig file
+export KUBECONFIG=/path/to/kubeconfig
+
+# Merge kubeconfig files
+KUBECONFIG=file1:file2:file3 kubectl config view --flatten
+
+# Backup kubeconfig
+cp ~/.kube/config ~/.kube/config.backup
+
+# Restore kubeconfig
+cp ~/.kube/config.backup ~/.kube/config
+```
+
+#### Cluster Access and Authentication
+```bash
+# Get current user
+kubectl config view --minify --output 'jsonpath={..user}'
+
+# Get current cluster
+kubectl config view --minify --output 'jsonpath={..cluster}'
+
+# Test cluster access
+kubectl auth can-i get pods
+
+# Test specific permissions
+kubectl auth can-i create deployments --namespace default
+
+# Get user permissions
+kubectl auth can-i --list
+
+# Get user permissions in specific namespace
+kubectl auth can-i --list --namespace <namespace-name>
+```
+
+### Useful Aliases and Shortcuts
+
+#### Setting Up Aliases
+```bash
+# Add to your shell profile (~/.bashrc, ~/.zshrc, etc.)
+alias k='kubectl'
+alias kg='kubectl get'
+alias kd='kubectl describe'
+alias kl='kubectl logs'
+alias ke='kubectl exec -it'
+alias kdp='kubectl delete pod'
+alias kdn='kubectl delete namespace'
+alias kgp='kubectl get pods'
+alias kgn='kubectl get nodes'
+alias kgns='kubectl get namespaces'
+alias kgs='kubectl get services'
+alias kgd='kubectl get deployments'
+alias kctx='kubectx'
+alias kns='kubens'
+```
+
+#### Quick Commands
+```bash
+# Quick pod operations
+kubectl get pods -o wide                    # List pods with node info
+kubectl get pods --show-labels             # List pods with labels
+kubectl get pods -o jsonpath='{.items[*].metadata.name}'  # Get pod names only
+
+# Quick node operations
+kubectl get nodes -o wide                   # List nodes with IPs
+kubectl get nodes --show-labels            # List nodes with labels
+kubectl get nodes -o jsonpath='{.items[*].metadata.name}'  # Get node names only
+
+# Quick namespace operations
+kubectl get namespaces -o wide              # List namespaces with details
+kubectl get all --all-namespaces           # List all resources in all namespaces
+```
+
+### Cluster Information Summary
+
+#### One-liner Commands
+```bash
+# Get cluster summary
+echo "=== CLUSTER INFO ===" && kubectl cluster-info && echo -e "\n=== NODES ===" && kubectl get nodes && echo -e "\n=== NAMESPACES ===" && kubectl get namespaces
+
+# Get resource summary
+echo "=== PODS BY NAMESPACE ===" && kubectl get pods --all-namespaces --no-headers | awk '{print $1}' | sort | uniq -c
+
+# Get node summary
+echo "=== NODE STATUS ===" && kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
+
+# Get context and namespace info
+echo "Context: $(kubectl config current-context)" && echo "Namespace: $(kubectl config view --minify --output 'jsonpath={..namespace}')"
+```
+
+---
+
+## Conclusion
 
 ### Benefits of Configuration Files
 - **Version Control**: Track cluster configurations in Git
