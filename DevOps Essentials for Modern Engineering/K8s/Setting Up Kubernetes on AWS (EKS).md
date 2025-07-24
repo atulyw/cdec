@@ -1,18 +1,19 @@
-# EKS Cluster Creation with eksctl Configuration File
+# Kubernetes Cluster Setup: EKS with eksctl and Minikube
 
 ## Table of Contents
 1. [Prerequisites](#prerequisites)
-2. [eksctl Installation](#eksctl-installation)
-3. [Configuration File Structure](#configuration-file-structure)
-4. [Basic Cluster Configuration](#basic-cluster-configuration)
-5. [Advanced Cluster Configurations](#advanced-cluster-configurations)
-6. [Node Group Configurations](#node-group-configurations)
-7. [Networking Configurations](#networking-configurations)
-8. [Security Configurations](#security-configurations)
-9. [IAM and Service Accounts](#iam-and-service-accounts)
-10. [Monitoring and Logging](#monitoring-and-logging)
-11. [Best Practices](#best-practices)
-12. [Troubleshooting](#troubleshooting)
+2. [Minikube Setup](#minikube-setup)
+3. [eksctl Installation](#eksctl-installation)
+4. [Configuration File Structure](#configuration-file-structure)
+5. [Basic Cluster Configuration](#basic-cluster-configuration)
+6. [Advanced Cluster Configurations](#advanced-cluster-configurations)
+7. [Node Group Configurations](#node-group-configurations)
+8. [Networking Configurations](#networking-configurations)
+9. [Security Configurations](#security-configurations)
+10. [IAM and Service Accounts](#iam-and-service-accounts)
+11. [Monitoring and Logging](#monitoring-and-logging)
+12. [Best Practices](#best-practices)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -47,11 +48,11 @@
 
 ### Local Requirements
 - **kubectl** installed
-- **eksctl** installed
-- **AWS credentials** configured
+- **eksctl** installed (for EKS)
+- **Minikube** installed (for local development)
+- **AWS credentials** configured (for EKS)
 
 ---
-
 ## eksctl Installation
 
 ### macOS (using Homebrew)
@@ -398,6 +399,345 @@ eksctl delete addon --cluster my-cluster --name vpc-cni
 eksctl update addon --cluster my-cluster --name vpc-cni --force
 ```
 
+---
+## Minikube Setup
+
+### What is Minikube?
+- **Minikube** is a tool that runs a single-node Kubernetes cluster locally
+- Perfect for development, testing, and learning Kubernetes
+- Runs inside a VM on your local machine
+- Supports multiple container runtimes and drivers
+
+### System Requirements
+- **CPU**: 2 cores minimum, 4+ recommended
+- **RAM**: 2GB minimum, 8GB+ recommended
+- **Storage**: 20GB free space
+- **Virtualization**: VT-x/AMD-v enabled in BIOS
+
+### Minikube Installation
+
+#### macOS
+```bash
+# Using Homebrew
+brew install minikube
+
+# Using curl
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-darwin-amd64
+sudo install minikube-darwin-amd64 /usr/local/bin/minikube
+```
+
+#### Linux
+```bash
+# Using package manager
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+# Alternative: Using snap
+sudo snap install minikube
+```
+
+#### Windows
+```powershell
+# Using Chocolatey
+choco install minikube
+
+# Using winget
+winget install minikube
+
+# Manual download from GitHub releases
+# https://github.com/kubernetes/minikube/releases
+```
+
+### Basic Minikube Operations
+
+#### Starting Minikube
+```bash
+# Start with default settings
+minikube start
+
+# Start with specific Kubernetes version
+minikube start --kubernetes-version=v1.28.0
+
+# Start with specific driver
+minikube start --driver=docker
+minikube start --driver=hyperkit  # macOS
+minikube start --driver=kvm2      # Linux
+minikube start --driver=hyperv    # Windows
+
+# Start with specific resources
+minikube start --cpus=4 --memory=8192 --disk-size=20g
+```
+
+#### Checking Cluster Status
+```bash
+# Check cluster status
+minikube status
+
+# Get cluster info
+kubectl cluster-info
+
+# Get nodes
+kubectl get nodes
+
+# Get all resources
+kubectl get all --all-namespaces
+```
+
+#### Stopping and Deleting
+```bash
+# Stop the cluster
+minikube stop
+
+# Delete the cluster
+minikube delete
+
+# Delete all clusters
+minikube delete --all
+```
+
+### Advanced Minikube Configuration
+
+#### Custom Configuration File
+```yaml
+# ~/.minikube/config/minikube.yaml
+minikube:
+  cpus: 4
+  memory: 8192
+  disk_size: 20g
+  driver: docker
+  kubernetes_version: v1.28.0
+  container_runtime: containerd
+  feature_gates: "ServiceAccountIssuerDiscovery=true"
+  extra_config:
+    kubeadm.pod-security-policy: "baseline"
+    kubeadm.ignore-preflight-errors: "NumCPU"
+```
+
+#### Starting with Custom Config
+```bash
+# Start with custom config
+minikube start --config ~/.minikube/config/minikube.yaml
+
+# Start with specific addons
+minikube start --addons=ingress,dashboard,metrics-server
+
+# Start with custom CNI
+minikube start --network-plugin=cni --cni=calico
+```
+
+### Minikube Add-ons
+
+#### Available Add-ons
+```bash
+# List available addons
+minikube addons list
+
+# Enable addons
+minikube addons enable dashboard
+minikube addons enable ingress
+minikube addons enable metrics-server
+minikube addons enable storage-provisioner
+minikube addons enable registry
+
+# Disable addons
+minikube addons disable dashboard
+```
+
+#### Dashboard Access
+```bash
+# Enable dashboard
+minikube addons enable dashboard
+
+# Access dashboard
+minikube dashboard
+
+# Or get the URL
+minikube dashboard --url
+```
+
+#### Ingress Controller
+```bash
+# Enable ingress
+minikube addons enable ingress
+
+# Check ingress controller
+kubectl get pods -n ingress-nginx
+
+# Test ingress
+kubectl create deployment hello-minikube --image=k8s.gcr.io/echoserver:1.4
+kubectl expose deployment hello-minikube --type=NodePort --port=8080
+```
+
+### Minikube Networking
+
+#### Port Forwarding
+```bash
+# Forward local port to service
+kubectl port-forward service/my-service 8080:80
+
+# Forward to pod
+kubectl port-forward pod/my-pod 8080:80
+
+# Using minikube service
+minikube service my-service
+minikube service my-service --url
+```
+
+#### Accessing Services
+```bash
+# Get service URL
+minikube service my-service --url
+
+# Open service in browser
+minikube service my-service
+
+# Get tunnel for LoadBalancer services
+minikube tunnel
+```
+
+### Minikube Storage
+
+#### Persistent Volumes
+```bash
+# Check storage provisioner
+kubectl get storageclass
+
+# Create PVC
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+EOF
+```
+
+#### Host Path Mounting
+```bash
+# Mount host directory
+minikube mount /host/path:/vm/path
+
+# Use in deployment
+kubectl apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: nginx
+        volumeMounts:
+        - name: host-volume
+          mountPath: /data
+      volumes:
+      - name: host-volume
+        hostPath:
+          path: /vm/path
+EOF
+```
+
+### Minikube Troubleshooting
+
+#### Common Issues
+```bash
+# Check minikube logs
+minikube logs
+
+# Check specific component logs
+minikube logs --component=kubelet
+minikube logs --component=apiserver
+
+# Reset minikube
+minikube delete
+minikube start
+
+# Check system resources
+minikube ssh "free -h"
+minikube ssh "df -h"
+```
+
+#### Performance Optimization
+```bash
+# Start with more resources
+minikube start --cpus=4 --memory=8192 --disk-size=20g
+
+# Use faster driver
+minikube start --driver=docker
+
+# Enable GPU support (if available)
+minikube start --driver=docker --gpu
+
+# Use specific container runtime
+minikube start --container-runtime=containerd
+```
+
+#### Debugging Commands
+```bash
+# SSH into minikube VM
+minikube ssh
+
+# Check VM status
+minikube status
+
+# Get VM IP
+minikube ip
+
+# Check kubectl context
+kubectl config current-context
+
+# Switch context
+kubectl config use-context minikube
+```
+
+### Minikube Best Practices
+
+#### Development Workflow
+1. **Start with sufficient resources**: Use 4+ CPUs and 8GB+ RAM
+2. **Enable necessary addons**: dashboard, ingress, metrics-server
+3. **Use persistent storage**: Enable storage-provisioner addon
+4. **Configure kubectl**: Ensure proper context switching
+5. **Use port forwarding**: For local development access
+
+#### Resource Management
+```bash
+# Monitor resource usage
+minikube ssh "top"
+
+# Check disk usage
+minikube ssh "df -h"
+
+# Clean up unused images
+minikube ssh "docker system prune -f"
+
+# Restart for fresh state
+minikube stop && minikube start
+```
+
+#### Integration with IDEs
+```bash
+# VS Code integration
+# Install Kubernetes extension
+# Configure kubectl context to minikube
+
+# IntelliJ IDEA integration
+# Install Kubernetes plugin
+# Set kubectl path and context
+```
 ---
 
 ## Conclusion
