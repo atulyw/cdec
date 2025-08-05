@@ -34,271 +34,603 @@ Storage Backend (EBS, NFS, etc.)
 
 ---
 
-## 2. PersistentVolumes (PV) and PersistentVolumeClaims (PVC)
+## 2. AWS EBS CSI Driver Setup and Deployment
 
-### PersistentVolume (PV)
-A PersistentVolume (PV) is a piece of storage in the cluster that has been provisioned by an administrator or dynamically provisioned using Storage Classes. It is a resource in the cluster just like a node is a cluster resource.
+### Prerequisites
+Before setting up EBS storage in Kubernetes, ensure you have:
+- EKS cluster running
+- `kubectl` configured to access your cluster
+- `helm` installed
+- `eksctl` installed
 
-#### PV Characteristics
-- **Cluster Resource**: Like a node, a PV is a cluster resource
-- **Lifecycle**: Independent of the pod lifecycle
-- **Access Modes**: Define how the volume can be mounted
-- **Reclaim Policy**: Determines what happens to the volume when the PVC is deleted
+### Step 1: Clean Up Existing EBS CSI Driver (if any)
 
-#### Access Modes
-1. **ReadWriteOnce (RWO)**: Single node can mount as read-write
-2. **ReadOnlyMany (ROX)**: Multiple nodes can mount as read-only
-3. **ReadWriteMany (RWM)**: Multiple nodes can mount as read-write
-
-#### Reclaim Policies
-- **Retain**: Volume is kept even after PVC deletion
-- **Delete**: Volume is deleted when PVC is deleted
-- **Recycle**: Volume is cleaned and made available for reuse
-
-### PersistentVolumeClaim (PVC)
-A PersistentVolumeClaim (PVC) is a request for storage by a user. It is similar to a pod. Pods consume node resources and PVCs consume PV resources.
-
-#### PVC Characteristics
-- **Storage Request**: Like a pod, a PVC consumes PV resources
-- **Lifecycle**: Bound to a specific PV
-- **Storage Class**: Can specify a storage class for dynamic provisioning
-- **Access Modes**: Must match the PV's access modes
-
-### Storage Classes
-Storage Classes provide a way for administrators to describe the "classes" of storage they offer. Different classes might map to quality-of-service levels, or to backup policies, or to arbitrary policies determined by the cluster administrators.
-
-#### Storage Class Components
-- **Provisioner**: Determines which volume plugin to use
-- **Parameters**: Storage-specific parameters
-- **Reclaim Policy**: What happens to the volume when PVC is deleted
-- **Volume Binding Mode**: When to bind and provision the volume
-
-### Static vs Dynamic Provisioning
-
-#### Static Provisioning
-Administrator creates PVs manually, and users claim them via PVCs.
-
-```yaml
-# Static PV Example
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: manual-pv
-spec:
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: manual
-  hostPath:
-    path: "/mnt/data"
-```
-
-#### Dynamic Provisioning
-Storage classes enable dynamic provisioning, where volumes are created on-demand.
-
-```yaml
-# Storage Class for Dynamic Provisioning
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: fast-ssd
-provisioner: kubernetes.io/aws-ebs
-parameters:
-  type: gp3
-  iops: "3000"
-  throughput: "125"
-reclaimPolicy: Delete
-volumeBindingMode: Immediate
-allowVolumeExpansion: true
-```
-
----
-
-## 3. Dynamic Volume Provisioning with EBS
-
-### AWS EBS Integration
-Amazon Elastic Block Store (EBS) provides persistent block storage volumes for use with EC2 instances. Kubernetes can dynamically provision EBS volumes using the AWS EBS CSI Driver.
-
-### EBS Volume Types
-
-#### GP3 (General Purpose SSD)
-- **Use Case**: Most workloads, boot volumes
-- **Performance**: 3,000 IOPS baseline, up to 16,000 IOPS
-- **Throughput**: 125 MiB/s baseline, up to 1,000 MiB/s
-- **Cost**: Most cost-effective SSD option
-
-#### IO2 (Provisioned IOPS SSD)
-- **Use Case**: Critical applications requiring high IOPS
-- **Performance**: Up to 64,000 IOPS per volume
-- **Throughput**: Up to 1,000 MiB/s
-- **Cost**: Highest performance, highest cost
-
-#### ST1 (Throughput Optimized HDD)
-- **Use Case**: Big data, data warehousing, log processing
-- **Performance**: 500 IOPS baseline
-- **Throughput**: Up to 500 MiB/s
-- **Cost**: Cost-effective for throughput-intensive workloads
-
-#### SC1 (Cold HDD)
-- **Use Case**: Infrequently accessed data
-- **Performance**: 250 IOPS baseline
-- **Throughput**: Up to 250 MiB/s
-- **Cost**: Lowest cost option
-
-### AWS EBS CSI Driver Setup
-
-#### 1. Install the EBS CSI Driver
+#### Delete Existing Service Account and IAM Role
 ```bash
-# Add the AWS EBS CSI Driver Helm repository
+# Delete the service account
+kubectl delete serviceaccount ebs-csi-controller-sa -n kube-system
+
+# Delete the IAM service account using eksctl
+eksctl delete iamserviceaccount \
+  --name ebs-csi-controller-sa \
+  --namespace kube-system \
+  --cluster micro-mesh-dev \
+  --region eu-west-1
+
+# Delete the IAM Role (AmazonEKS_EBS_CSI_DriverRole)
+# Detach the policy from the role
+# Remove the trust relationship between EKS and IAM
+# Remove the IAM Role from AWS if not used elsewhere
+```
+
+### Step 2: Install AWS EBS CSI Driver
+
+#### Add Helm Repository
+```bash
 helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-driver
 helm repo update
+```
 
-# Install the AWS EBS CSI Driver
-helm install aws-ebs-csi-driver aws-ebs-csi-driver/aws-ebs-csi-driver \
+#### Create IAM Service Account
+```bash
+eksctl create iamserviceaccount \
+  --name ebs-csi-controller-sa \
   --namespace kube-system \
-  --set controller.serviceAccount.create=true \
-  --set controller.serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=arn:aws:iam::ACCOUNT_ID:role/AmazonEKS_EBS_CSI_DriverRole
+  --cluster micro-mesh-dev \
+  --role-name AmazonEKS_EBS_CSI_DriverRole \
+  --region eu-west-1 \
+  --override-existing-serviceaccounts \
+  --attach-policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy \
+  --approve
 ```
 
-#### 2. Create IAM Role (for EKS)
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ec2:AttachVolume",
-        "ec2:CreateSnapshot",
-        "ec2:CreateTags",
-        "ec2:CreateVolume",
-        "ec2:DeleteSnapshot",
-        "ec2:DeleteTags",
-        "ec2:DeleteVolume",
-        "ec2:DescribeInstances",
-        "ec2:DescribeSnapshots",
-        "ec2:DescribeTags",
-        "ec2:DescribeVolumes",
-        "ec2:DetachVolume"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
+#### Install EBS CSI Driver
+```bash
+helm upgrade --install aws-ebs-csi-driver \
+  aws-ebs-csi-driver/aws-ebs-csi-driver \
+  --namespace kube-system \
+  --set controller.serviceAccount.create=false \
+  --set controller.serviceAccount.name=ebs-csi-controller-sa
 ```
 
-### EBS Storage Class Examples
+#### Verify Installation
+```bash
+# Check if pods are running
+kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-ebs-csi-driver
 
-#### GP3 Storage Class
+# Check CSI drivers
+kubectl get csidrivers
+```
+
+### Step 3: Create Storage Class
+
+#### Create EBS Storage Class
 ```yaml
+# ebs-sc.yaml
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: ebs-gp3
+  name: ebs-sc
 provisioner: ebs.csi.aws.com
 parameters:
-  type: gp3
-  iops: "3000"
-  throughput: "125"
-  encrypted: "true"
+  type: gp2
+  fsType: ext4
 reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
-allowVolumeExpansion: true
 ```
 
-#### IO2 Storage Class
-```yaml
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: ebs-io2
-provisioner: ebs.csi.aws.com
-parameters:
-  type: io2
-  iops: "10000"
-  encrypted: "true"
-reclaimPolicy: Delete
-volumeBindingMode: WaitForFirstConsumer
-allowVolumeExpansion: true
+#### Apply Storage Class
+```bash
+kubectl apply -f ebs-sc.yaml
 ```
 
-### Volume Expansion
-EBS volumes can be expanded without downtime.
+### Step 4: Create PVC and Test
 
+#### Create PVC
 ```yaml
-# PVC with Volume Expansion
+# pvc.yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: expandable-pvc
+  name: my-ebs-pvc
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: ebs-gp3
+  storageClassName: ebs-sc
   resources:
     requests:
-      storage: 10Gi
+      storage: 5Gi
+```
+
+#### Apply PVC
+```bash
+kubectl apply -f pvc.yaml
+```
+
+### Step 5: Create Test Pod
+
+#### Create Test Pod
+```yaml
+# pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ebs-test-pod
+spec:
+  containers:
+  - name: app
+    image: nginx
+    volumeMounts:
+    - mountPath: "/usr/share/nginx/html"
+      name: ebs-volume
+  volumes:
+  - name: ebs-volume
+    persistentVolumeClaim:
+      claimName: my-ebs-pvc
+```
+
+#### Apply and Verify
+```bash
+# Apply the pod
+kubectl apply -f pod.yaml
+
+# Check pod status
+kubectl get pods
+
+# Describe pod for details
+kubectl describe pod ebs-test-pod
+
+# Check PVC status
+kubectl get pvc
+
+# Check PV status
+kubectl get pv
+```
+
+### Step 6: Verify EBS Volume Creation
+
+#### Check AWS Console
+- Go to EC2 Dashboard
+- Navigate to Volumes
+- Verify that a new EBS volume was created
+- Check the volume is attached to an EC2 instance in your cluster
+
+#### Test Volume Mount
+```bash
+# Exec into the pod
+kubectl exec -it ebs-test-pod -- /bin/bash
+
+# Check if volume is mounted
+df -h
+
+# Create a test file
+echo "Hello from EBS volume" > /usr/share/nginx/html/test.txt
+
+# Exit the pod
+exit
+
+# Delete the pod
+kubectl delete pod ebs-test-pod
+
+# Recreate the pod
+kubectl apply -f pod.yaml
+
+# Verify the file still exists
+kubectl exec -it ebs-test-pod -- cat /usr/share/nginx/html/test.txt
+```
+
+### Troubleshooting
+
+#### Common Issues and Solutions
+
+**1. PVC Stuck in Pending**
+```bash
+# Check PVC status
+kubectl describe pvc my-ebs-pvc
+
+# Check events
+kubectl get events --field-selector involvedObject.name=my-ebs-pvc
+
+# Verify storage class
+kubectl get storageclass ebs-sc
+```
+
+**2. EBS CSI Driver Not Working**
+```bash
+# Check CSI driver pods
+kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-ebs-csi-driver
+
+# Check logs
+kubectl logs -n kube-system -l app.kubernetes.io/name=aws-ebs-csi-driver
+
+# Verify IAM permissions
+kubectl describe serviceaccount ebs-csi-controller-sa -n kube-system
+```
+
+**3. Volume Attachment Issues**
+```bash
+# Check if volume is attached
+kubectl get pv
+kubectl describe pv <pv-name>
+
+# Check AWS console for volume status
+# Verify volume is in the same AZ as the node
+```
+
+### Clean Up
+
+#### Remove Test Resources
+```bash
+# Delete pod
+kubectl delete pod ebs-test-pod
+
+# Delete PVC
+kubectl delete pvc my-ebs-pvc
+
+# Delete storage class
+kubectl delete storageclass ebs-sc
+```
+
+#### Remove EBS CSI Driver (if needed)
+```bash
+# Uninstall helm chart
+helm uninstall aws-ebs-csi-driver -n kube-system
+
+# Delete IAM service account
+eksctl delete iamserviceaccount \
+  --name ebs-csi-controller-sa \
+  --namespace kube-system \
+  --cluster micro-mesh-dev \
+  --region eu-west-1
+```
+
+
 ---
-# To expand, patch the PVC
-# kubectl patch pvc expandable-pvc -p '{"spec":{"resources":{"requests":{"storage":"20Gi"}}}}'
-```
 
-### Complete GP3 Deployment Example
+## 4. StatefulSets with EBS Storage
 
-#### 1. Storage Class Definition
+### What are StatefulSets?
+StatefulSets are Kubernetes workload objects designed for stateful applications that require:
+- **Stable Network Identity**: Predictable hostnames and DNS names
+- **Ordered Deployment**: Pods created, updated, and deleted in sequence
+- **Persistent Storage**: Each pod gets its own persistent volume
+- **Stable Storage**: Data survives pod restarts and reschedules
+
+### When to Use StatefulSets
+- **Databases**: MySQL, PostgreSQL, MongoDB, Redis
+- **Message Queues**: RabbitMQ, Kafka, Apache Pulsar
+- **Distributed Systems**: Elasticsearch, Cassandra, etcd
+- **Applications with State**: File servers, data stores, caches
+
+### Benefits of StatefulSets
+
+#### 1. **Stable Network Identity**
+- **Predictable Hostnames**: Each pod gets a consistent hostname (e.g., `mysql-0`, `mysql-1`)
+- **Stable DNS Names**: Pods are accessible via predictable DNS names
+- **Persistent IP Addresses**: Pods retain their network identity across restarts
+- **Direct Pod Access**: Applications can connect to specific pods reliably
+
+#### 2. **Ordered Deployment and Scaling**
+- **Sequential Creation**: Pods are created one by one in order (0, 1, 2...)
+- **Controlled Scaling**: Scale up/down operations follow predictable patterns
+- **Graceful Shutdown**: Pods are terminated in reverse order during scale down
+- **Dependency Management**: Ensures proper initialization sequence
+
+#### 3. **Persistent Storage**
+- **Individual Volumes**: Each pod gets its own persistent volume
+- **Data Persistence**: Data survives pod restarts and reschedules
+- **Volume Templates**: Automatic PVC creation for each pod
+- **Storage Isolation**: Each pod's data is isolated from others
+
+#### 4. **Stateful Application Support**
+- **Database Clusters**: Primary/replica relationships with stable identities
+- **Distributed Systems**: Leader election and node coordination
+- **Message Queues**: Broker identification and partition management
+- **File Systems**: Consistent file paths and data locations
+
+#### 5. **Operational Benefits**
+- **Predictable Behavior**: Consistent deployment and scaling patterns
+- **Easy Troubleshooting**: Clear pod naming and identification
+- **Backup Management**: Individual pod data can be backed up separately
+- **Rolling Updates**: Controlled updates with partition-based strategies
+
+#### 6. **High Availability**
+- **Fault Tolerance**: Survives node failures with data persistence
+- **Load Distribution**: Multiple replicas for read/write distribution
+- **Disaster Recovery**: Individual pod recovery with persistent data
+- **Geographic Distribution**: Can span multiple availability zones
+
+#### 7. **Application-Specific Features**
+- **Database Replication**: Master-slave or primary-replica setups
+- **Message Queue Clustering**: Multi-broker configurations
+- **Distributed Caching**: Cache clusters with consistent sharding
+- **File Server Clusters**: Distributed file systems with stable paths
+
+#### 8. **Development and Testing**
+- **Consistent Environments**: Same pod names across dev/staging/prod
+- **Easy Debugging**: Predictable pod identification
+- **Local Development**: Can run StatefulSets locally with same behavior
+- **Testing Scenarios**: Reliable stateful application testing
+
+### StatefulSet vs Deployment Comparison
+
+| Feature | Deployment | StatefulSet |
+|---------|------------|-------------|
+| Pod Names | Random (web-abc123) | Predictable (web-0, web-1) |
+| Storage | Ephemeral | Persistent per pod |
+| Scaling | Any order | Ordered (0, 1, 2...) |
+| Updates | Rolling | Rolling or OnDelete |
+| Network | Load balanced | Stable DNS per pod |
+| Use Case | Stateless apps | Stateful apps |
+
+### Practical StatefulSet Implementation with EBS
+
+#### Why Headless Services are Required for StatefulSets
+
+StatefulSets require headless services (`clusterIP: None`) for several critical reasons:
+
+**1. Stable Network Identity**
+- Each StatefulSet pod gets a predictable DNS name: `<pod-name>.<service-name>.<namespace>.svc.cluster.local`
+- Example: `mysql-0.mysql.default.svc.cluster.local`
+- This allows applications to connect to specific pods directly
+
+**2. Pod Discovery and Communication**
+- Headless services enable direct pod-to-pod communication
+- Applications can discover and connect to individual StatefulSet pods
+- Essential for distributed systems like databases, message queues
+
+**3. Stateful Application Requirements**
+- Stateful applications often need to know about specific instances
+- Primary/replica relationships in databases
+- Leader election in distributed systems
+- Data partitioning across specific pods
+
+**4. DNS Resolution**
+- Headless services create DNS records for each pod
+- Allows applications to resolve individual pod IPs
+- Enables load balancing at the application level
+
+**5. Ordered Operations**
+- StatefulSets create pods in order (0, 1, 2...)
+- Headless services maintain this ordering in DNS
+- Critical for applications that depend on pod order
+
+#### Step 1: Create Headless Service
 ```yaml
-# gp3-storage-class.yaml
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: ebs-gp3
-  annotations:
-    storageclass.kubernetes.io/is-default-class: "true"
-provisioner: ebs.csi.aws.com
-parameters:
-  type: gp3
-  iops: "3000"
-  throughput: "125"
-  encrypted: "true"
-  kmsKeyId: "arn:aws:kms:region:account:key/key-id"  # Optional
-reclaimPolicy: Delete
-volumeBindingMode: WaitForFirstConsumer
-allowVolumeExpansion: true
-```
-
-#### 2. PVC with GP3 Storage
-```yaml
-# gp3-pvc-example.yaml
+# mysql-headless-service.yaml
 apiVersion: v1
-kind: PersistentVolumeClaim
+kind: Service
 metadata:
-  name: app-storage-gp3
+  name: mysql
   labels:
-    app: myapp
-    storage-type: gp3
+    app: mysql
 spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: ebs-gp3
-  resources:
-    requests:
-      storage: 20Gi
-    limits:
-      storage: 100Gi  # Optional: set maximum expansion limit
+  ports:
+    - port: 3306
+  clusterIP: None  # Headless service
+  selector:
+    app: mysql
 ```
 
-#### 3. Deployment Using GP3 PVC
+#### Step 2: Create StatefulSet with EBS Storage
 ```yaml
-# gp3-deployment-example.yaml
+# mysql-statefulset.yaml
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: app-with-gp3-storage
-  labels:
-    app: myapp
+  name: mysql
 spec:
+  serviceName: mysql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          ports:
+            - containerPort: 3306
+              name: mysql
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: my-secret-pw
+          volumeMounts:
+            - name: mysql-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: my-ebs-pvc
+```
+
+#### Step 3: Deploy StatefulSet
+```bash
+# Apply the headless service
+kubectl apply -f mysql-headless-service.yaml
+
+# Apply the StatefulSet
+kubectl apply -f mysql-statefulset.yaml
+
+# Check status
+kubectl get statefulset mysql
+kubectl get pods -l app=mysql
+kubectl get pvc
+```
+
+### StatefulSet Scaling Operations
+
+#### Scale Up StatefulSet
+```bash
+# Scale to 5 replicas
+kubectl scale statefulset mysql --replicas=5
+
+# Watch pods being created in order
+kubectl get pods -l app=mysql -w
+```
+
+**Expected Behavior:**
+- Pods created in order: mysql-0, mysql-1, mysql-2, mysql-3, mysql-4
+- Each pod gets its own PVC: mysql-data-mysql-0, mysql-data-mysql-1, etc.
+- Each pod gets stable DNS: mysql-0.mysql, mysql-1.mysql, etc.
+
+#### Scale Down StatefulSet
+```bash
+# Scale to 2 replicas
+kubectl scale statefulset mysql --replicas=2
+
+# Watch pods being deleted in reverse order
+kubectl get pods -l app=mysql -w
+```
+
+**Expected Behavior:**
+- Pods deleted in reverse order: mysql-4, mysql-3, mysql-2
+- PVCs are retained (based on reclaim policy)
+- Data in remaining pods is preserved
+
+### StatefulSet Update Strategies
+
+#### Rolling Update (Default)
+```yaml
+# mysql-statefulset-rolling.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+spec:
+  # ... other specs ...
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0  # Update all pods
+```
+
+**Usage:**
+```bash
+# Update image
+kubectl set image statefulset/mysql mysql=mysql:8.0.33
+
+# Update with partition (update only pods >= partition)
+kubectl patch statefulset mysql -p '{"spec":{"updateStrategy":{"rollingUpdate":{"partition":2}}}}'
+```
+
+#### OnDelete Update
+```yaml
+# mysql-statefulset-ondelete.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+spec:
+  # ... other specs ...
+  updateStrategy:
+    type: OnDelete
+```
+
+**Usage:**
+```bash
+# Delete specific pod to trigger update
+kubectl delete pod mysql-1
+```
+
+### StatefulSet Networking
+
+#### DNS Resolution
+```bash
+# Test DNS resolution
+kubectl run test-dns --image=busybox --rm -it --restart=Never -- nslookup mysql-0.mysql
+
+# Expected output:
+# Server:    10.100.0.10
+# Address 1: 10.100.0.10 kube-dns.kube-system.svc.cluster.local
+# Name:      mysql-0.mysql
+# Address 1: 10.244.1.5 mysql-0.mysql.default.svc.cluster.local
+```
+
+#### Service Discovery
+```bash
+# Get all MySQL endpoints
+kubectl get endpoints mysql
+
+# Test connection to specific pod
+kubectl run mysql-client --image=mysql:8.0 --rm -it --restart=Never -- mysql -h mysql-0.mysql -u root -ppassword
+```
+
+### StatefulSet Data Management
+
+#### Backup Data
+```bash
+# Backup data from specific pod
+kubectl exec mysql-0 -- mysqldump -u root -ppassword mydb > backup.sql
+
+# Backup all pods
+for i in {0..2}; do
+  kubectl exec mysql-$i -- mysqldump -u root -ppassword mydb > backup-mysql-$i.sql
+done
+```
+
+#### Restore Data
+```bash
+# Restore data to specific pod
+kubectl exec -i mysql-0 -- mysql -u root -ppassword mydb < backup.sql
+```
+
+### StatefulSet Troubleshooting
+
+#### Common Issues and Solutions
+
+**1. Pod Stuck in Pending**
+```bash
+# Check pod events
+kubectl describe pod mysql-0
+
+# Check PVC status
+kubectl get pvc mysql-data-mysql-0
+kubectl describe pvc mysql-data-mysql-0
+
+# Check storage class
+kubectl get storageclass ebs-sc
+```
+
+**2. Data Loss After Pod Restart**
+```bash
+# Check if PVC is bound
+kubectl get pvc mysql-data-mysql-0
+
+# Check EBS volume in AWS console
+# Verify volume is in same AZ as node
+
+# Check pod logs
+kubectl logs mysql-0
+```
+
+**3. Scaling Issues**
+```bash
+# Check StatefulSet status
+kubectl describe statefulset mysql
+
+# Check if headless service exists
+kubectl get service mysql
+
+# Check DNS resolution
+kubectl run test-dns --image=busybox --rm -it --restart=Never -- nslookup mysql
+```
+
+### Advanced StatefulSet Patterns
+
+#### Multi-Container StatefulSet
+```yaml
+# multi-container-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: app-with-sidecar
+spec:
+  serviceName: app
   replicas: 3
   selector:
     matchLabels:
@@ -310,448 +642,96 @@ spec:
     spec:
       containers:
       - name: app
-        image: nginx:latest
+        image: myapp:latest
         ports:
-        - containerPort: 80
+        - containerPort: 8080
         volumeMounts:
         - name: app-data
           mountPath: /app/data
-        - name: app-logs
-          mountPath: /app/logs
-        - name: app-config
-          mountPath: /app/config
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 80
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 80
-          initialDelaySeconds: 5
-          periodSeconds: 5
-      volumes:
-      - name: app-data
-        persistentVolumeClaim:
-          claimName: app-storage-gp3
-      - name: app-logs
-        persistentVolumeClaim:
-          claimName: app-logs-gp3
-      - name: app-config
-        configMap:
-          name: app-config
-```
-
-#### 4. Multiple PVCs with Different GP3 Configurations
-```yaml
-# multiple-gp3-pvcs.yaml
----
-# High-performance GP3 for database
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: database-storage-gp3
-  labels:
-    app: database
-    storage-type: gp3-high-performance
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: ebs-gp3
-  resources:
-    requests:
-      storage: 100Gi
----
-# Standard GP3 for application data
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: app-data-gp3
-  labels:
-    app: myapp
-    storage-type: gp3-standard
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: ebs-gp3
-  resources:
-    requests:
-      storage: 50Gi
----
-# Small GP3 for logs
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: logs-storage-gp3
-  labels:
-    app: myapp
-    storage-type: gp3-logs
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: ebs-gp3
-  resources:
-    requests:
-      storage: 10Gi
-```
-
-#### 5. StatefulSet with GP3 Storage
-```yaml
-# statefulset-gp3-example.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: mysql
-  labels:
-    app: mysql
-spec:
-  ports:
-  - port: 3306
-    targetPort: 3306
-    name: mysql
-  clusterIP: None
-  selector:
-    app: mysql
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: mysql
-  labels:
-    app: mysql
-spec:
-  serviceName: mysql
-  replicas: 3
-  selector:
-    matchLabels:
-      app: mysql
-  template:
-    metadata:
-      labels:
-        app: mysql
-    spec:
-      containers:
-      - name: mysql
-        image: mysql:8.0
-        ports:
-        - containerPort: 3306
-          name: mysql
-        env:
-        - name: MYSQL_ROOT_PASSWORD
-          value: "password"
-        - name: MYSQL_DATABASE
-          value: "mydb"
+      - name: sidecar
+        image: fluentd:latest
         volumeMounts:
-        - name: mysql-data
-          mountPath: /var/lib/mysql
-        - name: mysql-config
-          mountPath: /etc/mysql/conf.d
-        resources:
-          requests:
-            memory: "1Gi"
-            cpu: "500m"
-          limits:
-            memory: "2Gi"
-            cpu: "1000m"
-        livenessProbe:
-          exec:
-            command:
-            - mysqladmin
-            - ping
-            - -h
-            - localhost
-            - -u
-            - root
-            - -p$MYSQL_ROOT_PASSWORD
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          exec:
-            command:
-            - mysql
-            - -h
-            - localhost
-            - -u
-            - root
-            - -p$MYSQL_ROOT_PASSWORD
-            - -e
-            - "SELECT 1"
-          initialDelaySeconds: 5
-          periodSeconds: 2
-      volumes:
-      - name: mysql-config
-        configMap:
-          name: mysql-config
+        - name: app-logs
+          mountPath: /var/log/app
   volumeClaimTemplates:
   - metadata:
-      name: mysql-data
+      name: app-data
     spec:
       accessModes: ["ReadWriteOnce"]
-      storageClassName: ebs-gp3
+      storageClassName: ebs-sc
       resources:
         requests:
-          storage: 20Gi
+          storage: 10Gi
+  - metadata:
+      name: app-logs
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: ebs-sc
+      resources:
+        requests:
+          storage: 5Gi
 ```
 
-#### 6. Deployment Scripts and Commands
-```bash
-# Deploy GP3 Storage Class
-kubectl apply -f gp3-storage-class.yaml
-
-# Deploy PVCs
-kubectl apply -f gp3-pvc-example.yaml
-kubectl apply -f multiple-gp3-pvcs.yaml
-
-# Deploy Application
-kubectl apply -f gp3-deployment-example.yaml
-
-# Deploy StatefulSet
-kubectl apply -f statefulset-gp3-example.yaml
-
-# Check Status
-kubectl get storageclass
-kubectl get pvc
-kubectl get pv
-kubectl get pods
-
-# Monitor Storage Usage
-kubectl describe pvc app-storage-gp3
-kubectl get events --field-selector involvedObject.name=app-storage-gp3
-
-# Expand Volume (if needed)
-kubectl patch pvc app-storage-gp3 -p '{"spec":{"resources":{"requests":{"storage":"40Gi"}}}}'
-
-# Check GP3 Volume Performance
-kubectl exec -it <pod-name> -- df -h
-kubectl exec -it <pod-name> -- iostat -x 1 5
-```
-
-#### 7. GP3 Performance Monitoring
+#### StatefulSet with Init Containers
 ```yaml
-# gp3-monitoring.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: gp3-monitoring-config
-data:
-  # Prometheus monitoring configuration
-  prometheus.yml: |
-    global:
-      scrape_interval: 15s
-    
-    scrape_configs:
-      - job_name: 'gp3-storage-metrics'
-        static_configs:
-          - targets: ['localhost:9090']
-        metrics_path: /metrics
-        params:
-          storage_type: ['gp3']
-  
-  # Custom metrics for GP3 volumes
-  gp3-metrics.py: |
-    import psutil
-    import time
-    
-    def get_gp3_metrics():
-        disk_usage = psutil.disk_usage('/app/data')
-        return {
-            'gp3_volume_size_bytes': disk_usage.total,
-            'gp3_volume_used_bytes': disk_usage.used,
-            'gp3_volume_free_bytes': disk_usage.free,
-            'gp3_volume_usage_percent': (disk_usage.used / disk_usage.total) * 100
-        }
-```
-
-#### 8. GP3 Best Practices
-
-**Performance Optimization**:
-```yaml
-# Optimized GP3 configuration
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: ebs-gp3-optimized
-provisioner: ebs.csi.aws.com
-parameters:
-  type: gp3
-  iops: "16000"  # Maximum IOPS for GP3
-  throughput: "1000"  # Maximum throughput for GP3
-  encrypted: "true"
-  kmsKeyId: "arn:aws:kms:region:account:key/key-id"
-reclaimPolicy: Delete
-volumeBindingMode: WaitForFirstConsumer
-allowVolumeExpansion: true
-```
-
-**Cost Optimization**:
-```yaml
-# Cost-optimized GP3 configuration
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: ebs-gp3-cost-optimized
-provisioner: ebs.csi.aws.com
-parameters:
-  type: gp3
-  iops: "3000"  # Baseline IOPS
-  throughput: "125"  # Baseline throughput
-  encrypted: "true"
-reclaimPolicy: Delete
-volumeBindingMode: WaitForFirstConsumer
-allowVolumeExpansion: true
-```
-
-**Backup Strategy**:
-```yaml
-# Backup PVC for GP3 volumes
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: backup-storage-gp3
-  labels:
-    app: backup
-    storage-type: gp3-backup
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: ebs-gp3
-  resources:
-    requests:
-      storage: 200Gi
-```
-
-This comprehensive GP3 deployment example covers all aspects from basic PVC creation to advanced StatefulSet deployment with monitoring and best practices.
-
----
-
-## 4. StatefulSets
-
-### What are StatefulSets?
-StatefulSets are the workload API object used to manage stateful applications. StatefulSets manage the deployment and scaling of a set of Pods, and provide guarantees about the ordering and uniqueness of these Pods.
-
-### StatefulSet Characteristics
-- **Stable Network Identity**: Each pod has a predictable hostname
-- **Ordered Deployment**: Pods are created, updated, and deleted in order
-- **Persistent Storage**: Each pod gets its own persistent storage
-- **Stable DNS**: Each pod gets a predictable DNS name
-
-### When to Use StatefulSets
-- **Databases**: MySQL, PostgreSQL, MongoDB
-- **Message Queues**: RabbitMQ, Kafka
-- **Applications requiring stable identities**: Distributed systems
-- **Applications with persistent storage requirements**: File servers, data stores
-
-### StatefulSet vs Deployment
-
-| Feature | Deployment | StatefulSet |
-|---------|------------|-------------|
-| Pod Names | Random (web-abc123) | Predictable (web-0, web-1) |
-| Storage | Ephemeral | Persistent per pod |
-| Scaling | Any order | Ordered (0, 1, 2...) |
-| Updates | Rolling | Rolling or OnDelete |
-| Network | Load balanced | Stable DNS per pod |
-| Use Case | Stateless apps | Stateful apps |
-
-### StatefulSet Components
-
-#### 1. Headless Service
-StatefulSets require a headless service to manage the network identity of the pods.
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: mysql
-  labels:
-    app: mysql
-spec:
-  ports:
-  - port: 3306
-  clusterIP: None
-  selector:
-    app: mysql
-```
-
-#### 2. StatefulSet with PVC Template
-```yaml
+# init-container-statefulset.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: mysql
+  name: app-with-init
 spec:
-  serviceName: mysql
+  serviceName: app
   replicas: 3
   selector:
     matchLabels:
-      app: mysql
+      app: myapp
   template:
     metadata:
       labels:
-        app: mysql
+        app: myapp
     spec:
-      containers:
-      - name: mysql
-        image: mysql:8.0
-        ports:
-        - containerPort: 3306
-        env:
-        - name: MYSQL_ROOT_PASSWORD
-          value: "password"
+      initContainers:
+      - name: init-db
+        image: busybox
+        command: ['sh', '-c', 'echo "Initializing database..." && sleep 10']
         volumeMounts:
-        - name: mysql-data
-          mountPath: /var/lib/mysql
+        - name: app-data
+          mountPath: /data
+      containers:
+      - name: app
+        image: myapp:latest
+        volumeMounts:
+        - name: app-data
+          mountPath: /app/data
   volumeClaimTemplates:
   - metadata:
-      name: mysql-data
+      name: app-data
     spec:
       accessModes: ["ReadWriteOnce"]
-      storageClassName: ebs-gp3
+      storageClassName: ebs-sc
       resources:
         requests:
           storage: 10Gi
 ```
 
-### StatefulSet Scaling
+### Clean Up StatefulSet
 
-#### Scaling Up
+#### Remove StatefulSet and Resources
 ```bash
-kubectl scale statefulset mysql --replicas=5
-```
-- Pods are created in order (mysql-0, mysql-1, mysql-2, mysql-3, mysql-4)
-- Each pod gets its own PVC
+# Delete StatefulSet
+kubectl delete statefulset mysql
 
-#### Scaling Down
-```bash
-kubectl scale statefulset mysql --replicas=2
-```
-- Pods are deleted in reverse order (mysql-4, mysql-3, mysql-2)
-- PVCs are retained (based on reclaim policy)
+# Delete service
+kubectl delete service mysql
 
-### StatefulSet Update Strategies
+# Delete ConfigMap
+kubectl delete configmap mysql-config
 
-#### Rolling Update
-```yaml
-spec:
-  updateStrategy:
-    type: RollingUpdate
-    rollingUpdate:
-      partition: 0
-```
+# Check if PVCs are retained or deleted (based on reclaim policy)
+kubectl get pvc
 
-#### OnDelete Update
-```yaml
-spec:
-  updateStrategy:
-    type: OnDelete
+# Delete PVCs manually if needed
+kubectl delete pvc mysql-data-mysql-0 mysql-data-mysql-1 mysql-data-mysql-2
 ```
 
 ---
