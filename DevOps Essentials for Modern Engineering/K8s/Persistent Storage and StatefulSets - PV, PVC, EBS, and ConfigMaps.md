@@ -245,6 +245,392 @@ spec:
 # kubectl patch pvc expandable-pvc -p '{"spec":{"resources":{"requests":{"storage":"20Gi"}}}}'
 ```
 
+### Complete GP3 Deployment Example
+
+#### 1. Storage Class Definition
+```yaml
+# gp3-storage-class.yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  iops: "3000"
+  throughput: "125"
+  encrypted: "true"
+  kmsKeyId: "arn:aws:kms:region:account:key/key-id"  # Optional
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+```
+
+#### 2. PVC with GP3 Storage
+```yaml
+# gp3-pvc-example.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-storage-gp3
+  labels:
+    app: myapp
+    storage-type: gp3
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ebs-gp3
+  resources:
+    requests:
+      storage: 20Gi
+    limits:
+      storage: 100Gi  # Optional: set maximum expansion limit
+```
+
+#### 3. Deployment Using GP3 PVC
+```yaml
+# gp3-deployment-example.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-with-gp3-storage
+  labels:
+    app: myapp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: app
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: app-data
+          mountPath: /app/data
+        - name: app-logs
+          mountPath: /app/logs
+        - name: app-config
+          mountPath: /app/config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: app-data
+        persistentVolumeClaim:
+          claimName: app-storage-gp3
+      - name: app-logs
+        persistentVolumeClaim:
+          claimName: app-logs-gp3
+      - name: app-config
+        configMap:
+          name: app-config
+```
+
+#### 4. Multiple PVCs with Different GP3 Configurations
+```yaml
+# multiple-gp3-pvcs.yaml
+---
+# High-performance GP3 for database
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: database-storage-gp3
+  labels:
+    app: database
+    storage-type: gp3-high-performance
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ebs-gp3
+  resources:
+    requests:
+      storage: 100Gi
+---
+# Standard GP3 for application data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-data-gp3
+  labels:
+    app: myapp
+    storage-type: gp3-standard
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ebs-gp3
+  resources:
+    requests:
+      storage: 50Gi
+---
+# Small GP3 for logs
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: logs-storage-gp3
+  labels:
+    app: myapp
+    storage-type: gp3-logs
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ebs-gp3
+  resources:
+    requests:
+      storage: 10Gi
+```
+
+#### 5. StatefulSet with GP3 Storage
+```yaml
+# statefulset-gp3-example.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  ports:
+  - port: 3306
+    targetPort: 3306
+    name: mysql
+  clusterIP: None
+  selector:
+    app: mysql
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  serviceName: mysql
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+          name: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "password"
+        - name: MYSQL_DATABASE
+          value: "mydb"
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+        - name: mysql-config
+          mountPath: /etc/mysql/conf.d
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - localhost
+            - -u
+            - root
+            - -p$MYSQL_ROOT_PASSWORD
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - mysql
+            - -h
+            - localhost
+            - -u
+            - root
+            - -p$MYSQL_ROOT_PASSWORD
+            - -e
+            - "SELECT 1"
+          initialDelaySeconds: 5
+          periodSeconds: 2
+      volumes:
+      - name: mysql-config
+        configMap:
+          name: mysql-config
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: ebs-gp3
+      resources:
+        requests:
+          storage: 20Gi
+```
+
+#### 6. Deployment Scripts and Commands
+```bash
+# Deploy GP3 Storage Class
+kubectl apply -f gp3-storage-class.yaml
+
+# Deploy PVCs
+kubectl apply -f gp3-pvc-example.yaml
+kubectl apply -f multiple-gp3-pvcs.yaml
+
+# Deploy Application
+kubectl apply -f gp3-deployment-example.yaml
+
+# Deploy StatefulSet
+kubectl apply -f statefulset-gp3-example.yaml
+
+# Check Status
+kubectl get storageclass
+kubectl get pvc
+kubectl get pv
+kubectl get pods
+
+# Monitor Storage Usage
+kubectl describe pvc app-storage-gp3
+kubectl get events --field-selector involvedObject.name=app-storage-gp3
+
+# Expand Volume (if needed)
+kubectl patch pvc app-storage-gp3 -p '{"spec":{"resources":{"requests":{"storage":"40Gi"}}}}'
+
+# Check GP3 Volume Performance
+kubectl exec -it <pod-name> -- df -h
+kubectl exec -it <pod-name> -- iostat -x 1 5
+```
+
+#### 7. GP3 Performance Monitoring
+```yaml
+# gp3-monitoring.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gp3-monitoring-config
+data:
+  # Prometheus monitoring configuration
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+    
+    scrape_configs:
+      - job_name: 'gp3-storage-metrics'
+        static_configs:
+          - targets: ['localhost:9090']
+        metrics_path: /metrics
+        params:
+          storage_type: ['gp3']
+  
+  # Custom metrics for GP3 volumes
+  gp3-metrics.py: |
+    import psutil
+    import time
+    
+    def get_gp3_metrics():
+        disk_usage = psutil.disk_usage('/app/data')
+        return {
+            'gp3_volume_size_bytes': disk_usage.total,
+            'gp3_volume_used_bytes': disk_usage.used,
+            'gp3_volume_free_bytes': disk_usage.free,
+            'gp3_volume_usage_percent': (disk_usage.used / disk_usage.total) * 100
+        }
+```
+
+#### 8. GP3 Best Practices
+
+**Performance Optimization**:
+```yaml
+# Optimized GP3 configuration
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-gp3-optimized
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  iops: "16000"  # Maximum IOPS for GP3
+  throughput: "1000"  # Maximum throughput for GP3
+  encrypted: "true"
+  kmsKeyId: "arn:aws:kms:region:account:key/key-id"
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+```
+
+**Cost Optimization**:
+```yaml
+# Cost-optimized GP3 configuration
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-gp3-cost-optimized
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  iops: "3000"  # Baseline IOPS
+  throughput: "125"  # Baseline throughput
+  encrypted: "true"
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+```
+
+**Backup Strategy**:
+```yaml
+# Backup PVC for GP3 volumes
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backup-storage-gp3
+  labels:
+    app: backup
+    storage-type: gp3-backup
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ebs-gp3
+  resources:
+    requests:
+      storage: 200Gi
+```
+
+This comprehensive GP3 deployment example covers all aspects from basic PVC creation to advanced StatefulSet deployment with monitoring and best practices.
+
 ---
 
 ## 4. StatefulSets
