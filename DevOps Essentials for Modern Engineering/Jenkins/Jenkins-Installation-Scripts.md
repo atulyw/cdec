@@ -1,10 +1,16 @@
 # 🚀 Jenkins Installation Scripts
 
+## 📋 Version Information
+- **Latest Jenkins LTS**: 2.426.1.3 (as of 2024)
+- **Minimum Java Version**: Java 17 (Jenkins 2.426+)
+- **Recommended Java Version**: Java 21 (for optimal performance)
+- **Supported Platforms**: Ubuntu/Debian, CentOS/RHEL, Docker
+
 ## 📋 Prerequisites
 - Ubuntu/Debian or CentOS/RHEL system
 - Sudo privileges
 - Internet connectivity
-- Java 8 or 11 installed
+- Java 17 or 21 (Jenkins 2.426+ requires Java 17+, latest LTS requires Java 21)
 
 ---
 
@@ -25,9 +31,9 @@ echo "🚀 Starting Jenkins Installation on Ubuntu/Debian..."
 echo "📦 Updating system packages..."
 sudo apt update && sudo apt upgrade -y
 
-# Install Java
-echo "☕ Installing Java 11..."
-sudo apt install -y openjdk-11-jdk
+# Install Java 21
+echo "☕ Installing Java 21..."
+sudo apt install -y openjdk-21-jdk
 
 # Verify Java installation
 echo "✅ Verifying Java installation..."
@@ -78,7 +84,7 @@ echo "🔑 Initial password: $(sudo cat /var/lib/jenkins/secrets/initialAdminPas
 #!/bin/bash
 # Quick Jenkins install for Ubuntu/Debian
 sudo apt update
-sudo apt install -y openjdk-11-jdk
+sudo apt install -y openjdk-21-jdk
 curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
 echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
 sudo apt update
@@ -107,9 +113,9 @@ echo "🚀 Starting Jenkins Installation on CentOS/RHEL..."
 echo "📦 Updating system packages..."
 sudo yum update -y
 
-# Install Java
-echo "☕ Installing Java 11..."
-sudo yum install -y java-11-openjdk-devel
+# Install Java 21
+echo "☕ Installing Java 21..."
+sudo yum install -y java-21-openjdk-devel
 
 # Verify Java installation
 echo "✅ Verifying Java installation..."
@@ -154,7 +160,7 @@ echo "🔑 Initial password: $(sudo cat /var/lib/jenkins/secrets/initialAdminPas
 #!/bin/bash
 # Quick Jenkins install for CentOS/RHEL
 sudo yum update -y
-sudo yum install -y java-11-openjdk-devel
+sudo yum install -y java-21-openjdk-devel
 sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
 sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
 sudo yum install -y jenkins
@@ -192,8 +198,8 @@ echo "📁 Creating Jenkins data directory..."
 sudo mkdir -p /var/jenkins_home
 sudo chown 1000:1000 /var/jenkins_home
 
-# Run Jenkins container
-echo "🚀 Starting Jenkins container..."
+# Run Jenkins container with latest LTS
+echo "🚀 Starting Jenkins container with latest LTS..."
 docker run -d \
   --name jenkins \
   --restart=unless-stopped \
@@ -201,7 +207,7 @@ docker run -d \
   -p 50000:50000 \
   -v /var/jenkins_home:/var/jenkins_home \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  jenkins/jenkins:lts
+  jenkins/jenkins:lts-jdk21
 
 # Wait for Jenkins to start
 echo "⏳ Waiting for Jenkins to start..."
@@ -235,7 +241,7 @@ echo "🚀 Complete Jenkins Setup Script..."
 if [ -f /etc/debian_version ]; then
     echo "📦 Detected Debian/Ubuntu system..."
     sudo apt update
-    sudo apt install -y openjdk-11-jdk
+    sudo apt install -y openjdk-21-jdk
     curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
     echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
     sudo apt update
@@ -243,7 +249,7 @@ if [ -f /etc/debian_version ]; then
 elif [ -f /etc/redhat-release ]; then
     echo "📦 Detected CentOS/RHEL system..."
     sudo yum update -y
-    sudo yum install -y java-11-openjdk-devel
+    sudo yum install -y java-21-openjdk-devel
     sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
     sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
     sudo yum install -y jenkins
@@ -348,7 +354,102 @@ echo "✅ Jenkins uninstalled successfully!"
 
 ---
 
-## 🔧 6. Backup and Restore Scripts
+## 🔧 6. Latest Jenkins LTS Installation Script
+
+### Install Latest Jenkins LTS with Java 21
+```bash
+#!/bin/bash
+
+# Latest Jenkins LTS Installation Script
+# Run with: sudo bash jenkins-latest-install.sh
+
+set -e
+
+echo "🚀 Installing Latest Jenkins LTS with Java 21..."
+
+# Detect OS
+if [ -f /etc/debian_version ]; then
+    echo "📦 Detected Debian/Ubuntu system..."
+    
+    # Update system
+    sudo apt update && sudo apt upgrade -y
+    
+    # Install Java 21
+    echo "☕ Installing Java 21..."
+    sudo apt install -y openjdk-21-jdk
+    
+    # Add Jenkins repository with latest key
+    echo "📥 Adding Jenkins repository..."
+    curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee \
+      /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+    
+    echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
+      https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+      /etc/apt/sources.list.d/jenkins.list > /dev/null
+    
+    # Update and install latest Jenkins
+    sudo apt update
+    sudo apt install -y jenkins
+    
+elif [ -f /etc/redhat-release ]; then
+    echo "📦 Detected CentOS/RHEL system..."
+    
+    # Update system
+    sudo yum update -y
+    
+    # Install Java 21
+    echo "☕ Installing Java 21..."
+    sudo yum install -y java-21-openjdk-devel
+    
+    # Add Jenkins repository
+    echo "📥 Adding Jenkins repository..."
+    sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+    sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+    
+    # Install latest Jenkins
+    sudo yum install -y jenkins
+    
+else
+    echo "❌ Unsupported operating system"
+    exit 1
+fi
+
+# Start and enable Jenkins
+echo "▶️ Starting Jenkins service..."
+sudo systemctl start jenkins
+sudo systemctl enable jenkins
+
+# Wait for Jenkins to start
+echo "⏳ Waiting for Jenkins to start..."
+sleep 30
+
+# Get initial password
+INITIAL_PASSWORD=$(sudo cat /var/lib/jenkins/secrets/initialAdminPassword)
+
+# Show Jenkins version
+echo "📊 Jenkins version:"
+sudo systemctl status jenkins --no-pager
+
+# Configure firewall
+echo "🔥 Configuring firewall..."
+if command -v ufw &> /dev/null; then
+    sudo ufw allow 8080/tcp
+    sudo ufw allow ssh
+elif command -v firewall-cmd &> /dev/null; then
+    sudo firewall-cmd --permanent --add-port=8080/tcp
+    sudo firewall-cmd --permanent --add-service=ssh
+    sudo firewall-cmd --reload
+fi
+
+echo "✅ Latest Jenkins LTS installation completed!"
+echo "🌐 Access Jenkins at: http://$(hostname -I | awk '{print $1}'):8080"
+echo "🔑 Initial password: $INITIAL_PASSWORD"
+echo "📋 Jenkins LTS version installed with Java 21 support"
+```
+
+---
+
+## 🔧 7. Backup and Restore Scripts
 
 ### Backup Jenkins Configuration
 ```bash
@@ -441,6 +542,9 @@ sudo bash jenkins-install-centos.sh
 
 # For Docker
 bash jenkins-docker-install.sh
+
+# For Latest Jenkins LTS with Java 21 (Recommended)
+sudo bash jenkins-latest-install.sh
 ```
 
 ### 3. Access Jenkins
@@ -454,9 +558,10 @@ bash jenkins-docker-install.sh
 
 - **Security**: Change default passwords after installation
 - **Firewall**: Ensure port 8080 is open
-- **Java**: Jenkins requires Java 8 or 11
+- **Java**: Jenkins 2.426+ requires Java 17+, latest LTS requires Java 21
 - **Backup**: Regular backups recommended
 - **Updates**: Keep Jenkins updated for security
+- **Version**: Latest Jenkins LTS version supports Java 21 for optimal performance
 
 ---
 
@@ -468,3 +573,13 @@ bash jenkins-docker-install.sh
 4. **Set up SSH Keys** for agents
 5. **Configure Backup Strategy**
 6. **Set up Monitoring**
+
+## 🆕 Latest Jenkins LTS Features (2.426+)
+
+- **Enhanced Security**: Improved security headers and CSRF protection
+- **Performance**: Better memory management with Java 21
+- **UI Improvements**: Modernized interface and better accessibility
+- **Pipeline Enhancements**: Improved Declarative Pipeline syntax
+- **Cloud Native**: Better Kubernetes and Docker support
+- **Monitoring**: Enhanced metrics and health checks
+- **Accessibility**: WCAG 2.1 compliance improvements
