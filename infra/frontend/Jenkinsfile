@@ -100,12 +100,12 @@ pipeline {
                         cd ${env.WORKSPACE_PATH}
                         
                         # Create backend configuration
-                        cat > backend.tf << EOF
+                        cat > backend.tf << 'EOF'
 terraform {
   backend "s3" {
-    bucket         = "${env.TF_STATE_BUCKET}"
-    key            = "${env.TF_STATE_KEY}"
-    region         = "${env.TF_STATE_REGION}"
+    bucket         = "terraform-state-bucket"
+    key            = "frontend/dev/terraform.tfstate"
+    region         = "us-west-2"
     encrypt        = true
     dynamodb_table = "terraform-state-lock"
   }
@@ -247,11 +247,7 @@ EOF
         }
         failure {
             echo "Frontend infrastructure deployment to ${params.ENVIRONMENT} failed"
-            emailext (
-                subject: "Jenkins Build Failed: Frontend Infrastructure - ${params.ENVIRONMENT}",
-                body: "Build ${env.BUILD_URL} failed for environment ${params.ENVIRONMENT}",
-                to: "${env.CHANGE_AUTHOR_EMAIL ?: 'devops@company.com'}"
-            )
+            echo "Build ${env.BUILD_URL} failed for environment ${params.ENVIRONMENT}"
         }
         unstable {
             echo "Frontend infrastructure deployment to ${params.ENVIRONMENT} completed with warnings"
