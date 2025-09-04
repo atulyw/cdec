@@ -113,6 +113,9 @@ terraform {
 }
 EOF
                             
+                            # Clean any existing local state files that might cause conflicts
+                            rm -f terraform.tfstate* .terraform.lock.hcl
+                            
                             terraform init -upgrade
                         """
                     }
