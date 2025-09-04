@@ -126,7 +126,7 @@ EOF
             }
             post {
                 always {
-                    archiveArtifacts artifacts: "${env.WORKSPACE_PATH}/tfplan-${params.ENVIRONMENT}.out", fingerprint: true
+                    archiveArtifacts artifacts: "tfplan-${params.ENVIRONMENT}.out", fingerprint: true
                 }
             }
         }
@@ -162,7 +162,7 @@ EOF
                         """
                     }
                 }
-                archiveArtifacts artifacts: "${env.WORKSPACE_PATH}/terraform-outputs.json", fingerprint: true
+                archiveArtifacts artifacts: "terraform-outputs.json", fingerprint: true
             }
         }
         
