@@ -1,0 +1,273 @@
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev', 'stage', 'prod'],
+            description: 'Target environment for deployment'
+        )
+        booleanParam(
+            name: 'AUTO_APPROVE',
+            defaultValue: false,
+            description: 'Auto-approve terraform apply (use with caution)'
+        )
+        string(
+            name: 'TERRAFORM_VERSION',
+            defaultValue: '1.5.0',
+            description: 'Terraform version to use'
+        )
+        booleanParam(
+            name: 'SKIP_BACKEND_CHECK',
+            defaultValue: false,
+            description: 'Skip backend infrastructure dependency check'
+        )
+        booleanParam(
+            name: 'DEPLOY_FRONTEND_ASSETS',
+            defaultValue: true,
+            description: 'Deploy frontend build assets to S3'
+        )
+        string(
+            name: 'FRONTEND_BUILD_PATH',
+            defaultValue: 'app/frontend/dist',
+            description: 'Path to frontend build directory'
+        )
+    }
+    
+    environment {
+        TF_WORKSPACE = "frontend-${params.ENVIRONMENT}"
+        TF_VAR_environment = "${params.ENVIRONMENT}"
+        AWS_DEFAULT_REGION = 'us-west-2'
+        TF_STATE_BUCKET = 'terraform-state-bucket'
+        TF_STATE_KEY = 'frontend/${params.ENVIRONMENT}/terraform.tfstate'
+        TF_STATE_REGION = 'us-west-2'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script {
+                    env.WORKSPACE_PATH = "${WORKSPACE}/infra/frontend/env/${params.ENVIRONMENT}"
+                }
+            }
+        }
+        
+        stage('Check Backend Dependencies') {
+            when {
+                not { params.SKIP_BACKEND_CHECK }
+            }
+            steps {
+                script {
+                    sh """
+                        # Check if backend infrastructure exists
+                        cd ${WORKSPACE}/infra/backend/env/${params.ENVIRONMENT}
+                        
+                        if [ ! -f terraform.tfstate ]; then
+                            echo "Backend infrastructure not found. Please deploy backend infrastructure first."
+                            exit 1
+                        fi
+                        
+                        # Verify backend outputs exist
+                        terraform output vpc_id > /dev/null 2>&1 || {
+                            echo "Backend infrastructure outputs not available. Please redeploy backend infrastructure."
+                            exit 1
+                        }
+                        
+                        echo "Backend infrastructure dependency check passed"
+                    """
+                }
+            }
+        }
+        
+        stage('Setup Terraform') {
+            steps {
+                script {
+                    sh """
+                        cd ${env.WORKSPACE_PATH}
+                        
+                        # Install Terraform if not present
+                        if ! command -v terraform &> /dev/null; then
+                            wget https://releases.hashicorp.com/terraform/${params.TERRAFORM_VERSION}/terraform_${params.TERRAFORM_VERSION}_linux_amd64.zip
+                            unzip terraform_${params.TERRAFORM_VERSION}_linux_amd64.zip
+                            sudo mv terraform /usr/local/bin/
+                            rm terraform_${params.TERRAFORM_VERSION}_linux_amd64.zip
+                        fi
+                        
+                        terraform version
+                    """
+                }
+            }
+        }
+        
+        stage('Terraform Init') {
+            steps {
+                script {
+                    sh """
+                        cd ${env.WORKSPACE_PATH}
+                        
+                        # Create backend configuration
+                        cat > backend.tf << EOF
+terraform {
+  backend "s3" {
+    bucket         = "${env.TF_STATE_BUCKET}"
+    key            = "${env.TF_STATE_KEY}"
+    region         = "${env.TF_STATE_REGION}"
+    encrypt        = true
+    dynamodb_table = "terraform-state-lock"
+  }
+}
+EOF
+                        
+                        terraform init -upgrade
+                    """
+                }
+            }
+        }
+        
+        stage('Terraform Plan') {
+            steps {
+                script {
+                    sh """
+                        cd ${env.WORKSPACE_PATH}
+                        terraform workspace select ${env.TF_WORKSPACE} || terraform workspace new ${env.TF_WORKSPACE}
+                        terraform plan -out=tfplan-${params.ENVIRONMENT}.out
+                    """
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: "${env.WORKSPACE_PATH}/tfplan-${params.ENVIRONMENT}.out", fingerprint: true
+                }
+            }
+        }
+        
+        stage('Terraform Apply') {
+            when {
+                anyOf {
+                    params.AUTO_APPROVE
+                    not { params.AUTO_APPROVE }
+                }
+            }
+            steps {
+                script {
+                    if (params.AUTO_APPROVE) {
+                        sh """
+                            cd ${env.WORKSPACE_PATH}
+                            terraform apply -auto-approve tfplan-${params.ENVIRONMENT}.out
+                        """
+                    } else {
+                        input message: "Apply Terraform changes for ${params.ENVIRONMENT} environment?", ok: 'Apply'
+                        sh """
+                            cd ${env.WORKSPACE_PATH}
+                            terraform apply tfplan-${params.ENVIRONMENT}.out
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy Frontend Assets') {
+            when {
+                params.DEPLOY_FRONTEND_ASSETS
+            }
+            steps {
+                script {
+                    sh """
+                        # Get S3 bucket name from terraform output
+                        BUCKET_NAME=\$(cd ${env.WORKSPACE_PATH} && terraform output -raw s3_bucket_name)
+                        
+                        # Check if build directory exists
+                        if [ ! -d "${WORKSPACE}/${params.FRONTEND_BUILD_PATH}" ]; then
+                            echo "Frontend build directory not found at ${params.FRONTEND_BUILD_PATH}"
+                            echo "Please build your frontend application first"
+                            exit 1
+                        fi
+                        
+                        # Upload files to S3
+                        aws s3 sync ${WORKSPACE}/${params.FRONTEND_BUILD_PATH} s3://\$BUCKET_NAME --delete
+                        
+                        echo "Frontend assets deployed to S3 bucket: \$BUCKET_NAME"
+                    """
+                }
+            }
+        }
+        
+        stage('Invalidate CloudFront Cache') {
+            when {
+                params.DEPLOY_FRONTEND_ASSETS
+            }
+            steps {
+                script {
+                    sh """
+                        # Get CloudFront distribution ID from terraform output
+                        DISTRIBUTION_ID=\$(cd ${env.WORKSPACE_PATH} && terraform output -raw cloudfront_distribution_id)
+                        
+                        # Create CloudFront invalidation
+                        aws cloudfront create-invalidation --distribution-id \$DISTRIBUTION_ID --paths "/*"
+                        
+                        echo "CloudFront cache invalidation created for distribution: \$DISTRIBUTION_ID"
+                    """
+                }
+            }
+        }
+        
+        stage('Output Values') {
+            steps {
+                script {
+                    sh """
+                        cd ${env.WORKSPACE_PATH}
+                        terraform output -json > terraform-outputs.json
+                    """
+                }
+                archiveArtifacts artifacts: "${env.WORKSPACE_PATH}/terraform-outputs.json", fingerprint: true
+            }
+        }
+        
+        stage('Verify Frontend Deployment') {
+            steps {
+                script {
+                    sh """
+                        # Get CloudFront domain name from terraform output
+                        CLOUDFRONT_DOMAIN=\$(cd ${env.WORKSPACE_PATH} && terraform output -raw cloudfront_domain_name)
+                        
+                        # Test if the site is accessible
+                        HTTP_STATUS=\$(curl -s -o /dev/null -w "%{http_code}" https://\$CLOUDFRONT_DOMAIN)
+                        
+                        if [ "\$HTTP_STATUS" = "200" ]; then
+                            echo "Frontend deployment verification passed - Site is accessible"
+                        else
+                            echo "Frontend deployment verification failed - HTTP Status: \$HTTP_STATUS"
+                            exit 1
+                        fi
+                    """
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            script {
+                sh """
+                    cd ${env.WORKSPACE_PATH}
+                    rm -f tfplan-${params.ENVIRONMENT}.out
+                """
+            }
+        }
+        success {
+            echo "Frontend infrastructure deployment to ${params.ENVIRONMENT} completed successfully"
+        }
+        failure {
+            echo "Frontend infrastructure deployment to ${params.ENVIRONMENT} failed"
+            emailext (
+                subject: "Jenkins Build Failed: Frontend Infrastructure - ${params.ENVIRONMENT}",
+                body: "Build ${env.BUILD_URL} failed for environment ${params.ENVIRONMENT}",
+                to: "${env.CHANGE_AUTHOR_EMAIL ?: 'devops@company.com'}"
+            )
+        }
+        unstable {
+            echo "Frontend infrastructure deployment to ${params.ENVIRONMENT} completed with warnings"
+        }
+    }
+}

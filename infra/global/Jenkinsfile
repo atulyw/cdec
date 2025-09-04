@@ -1,0 +1,165 @@
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev', 'stage', 'prod'],
+            description: 'Target environment for deployment'
+        )
+        booleanParam(
+            name: 'AUTO_APPROVE',
+            defaultValue: false,
+            description: 'Auto-approve terraform apply (use with caution)'
+        )
+        string(
+            name: 'TERRAFORM_VERSION',
+            defaultValue: '1.5.0',
+            description: 'Terraform version to use'
+        )
+    }
+    
+    environment {
+        TF_WORKSPACE = "global-${params.ENVIRONMENT}"
+        TF_VAR_environment = "${params.ENVIRONMENT}"
+        AWS_DEFAULT_REGION = 'us-west-2'
+        TF_STATE_BUCKET = 'terraform-state-bucket'
+        TF_STATE_KEY = 'global/${params.ENVIRONMENT}/terraform.tfstate'
+        TF_STATE_REGION = 'us-west-2'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script {
+                    env.WORKSPACE_PATH = "${WORKSPACE}/infra/global/env/${params.ENVIRONMENT}"
+                }
+            }
+        }
+        
+        stage('Setup Terraform') {
+            steps {
+                script {
+                    sh """
+                        cd ${env.WORKSPACE_PATH}
+                        
+                        # Install Terraform if not present
+                        if ! command -v terraform &> /dev/null; then
+                            wget https://releases.hashicorp.com/terraform/${params.TERRAFORM_VERSION}/terraform_${params.TERRAFORM_VERSION}_linux_amd64.zip
+                            unzip terraform_${params.TERRAFORM_VERSION}_linux_amd64.zip
+                            sudo mv terraform /usr/local/bin/
+                            rm terraform_${params.TERRAFORM_VERSION}_linux_amd64.zip
+                        fi
+                        
+                        terraform version
+                    """
+                }
+            }
+        }
+        
+        stage('Terraform Init') {
+            steps {
+                script {
+                    sh """
+                        cd ${env.WORKSPACE_PATH}
+                        
+                        # Create backend configuration
+                        cat > backend.tf << EOF
+terraform {
+  backend "s3" {
+    bucket         = "${env.TF_STATE_BUCKET}"
+    key            = "${env.TF_STATE_KEY}"
+    region         = "${env.TF_STATE_REGION}"
+    encrypt        = true
+    dynamodb_table = "terraform-state-lock"
+  }
+}
+EOF
+                        
+                        terraform init -upgrade
+                    """
+                }
+            }
+        }
+        
+        stage('Terraform Plan') {
+            steps {
+                script {
+                    sh """
+                        cd ${env.WORKSPACE_PATH}
+                        terraform workspace select ${env.TF_WORKSPACE} || terraform workspace new ${env.TF_WORKSPACE}
+                        terraform plan -out=tfplan-${params.ENVIRONMENT}.out
+                    """
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: "${env.WORKSPACE_PATH}/tfplan-${params.ENVIRONMENT}.out", fingerprint: true
+                }
+            }
+        }
+        
+        stage('Terraform Apply') {
+            when {
+                anyOf {
+                    params.AUTO_APPROVE
+                    not { params.AUTO_APPROVE }
+                }
+            }
+            steps {
+                script {
+                    if (params.AUTO_APPROVE) {
+                        sh """
+                            cd ${env.WORKSPACE_PATH}
+                            terraform apply -auto-approve tfplan-${params.ENVIRONMENT}.out
+                        """
+                    } else {
+                        input message: "Apply Terraform changes for ${params.ENVIRONMENT} environment?", ok: 'Apply'
+                        sh """
+                            cd ${env.WORKSPACE_PATH}
+                            terraform apply tfplan-${params.ENVIRONMENT}.out
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Output Values') {
+            steps {
+                script {
+                    sh """
+                        cd ${env.WORKSPACE_PATH}
+                        terraform output -json > terraform-outputs.json
+                    """
+                }
+                archiveArtifacts artifacts: "${env.WORKSPACE_PATH}/terraform-outputs.json", fingerprint: true
+            }
+        }
+    }
+    
+    post {
+        always {
+            script {
+                sh """
+                    cd ${env.WORKSPACE_PATH}
+                    rm -f tfplan-${params.ENVIRONMENT}.out
+                """
+            }
+        }
+        success {
+            echo "Global infrastructure deployment to ${params.ENVIRONMENT} completed successfully"
+        }
+        failure {
+            echo "Global infrastructure deployment to ${params.ENVIRONMENT} failed"
+            emailext (
+                subject: "Jenkins Build Failed: Global Infrastructure - ${params.ENVIRONMENT}",
+                body: "Build ${env.BUILD_URL} failed for environment ${params.ENVIRONMENT}",
+                to: "${env.CHANGE_AUTHOR_EMAIL ?: 'devops@company.com'}"
+            )
+        }
+        unstable {
+            echo "Global infrastructure deployment to ${params.ENVIRONMENT} completed with warnings"
+        }
+    }
+}
