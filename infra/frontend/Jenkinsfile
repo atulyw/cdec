@@ -227,20 +227,22 @@ EOF
         stage('Verify Frontend Deployment') {
             steps {
                 script {
-                    sh """
-                        # Get CloudFront domain name from terraform output
-                        CLOUDFRONT_DOMAIN=\$(cd ${env.WORKSPACE_PATH} && terraform output -raw cloudfront_domain_name)
-                        
-                        # Test if the site is accessible
-                        HTTP_STATUS=\$(curl -s -o /dev/null -w "%{http_code}" https://\$CLOUDFRONT_DOMAIN)
-                        
-                        if [ "\$HTTP_STATUS" = "200" ]; then
-                            echo "Frontend deployment verification passed - Site is accessible"
-                        else
-                            echo "Frontend deployment verification failed - HTTP Status: \$HTTP_STATUS"
-                            exit 1
-                        fi
-                    """
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            # Get CloudFront domain name from terraform output
+                            CLOUDFRONT_DOMAIN=\$(cd ${env.WORKSPACE_PATH} && terraform output -raw cloudfront_domain_name)
+                            
+                            # Test if the site is accessible
+                            HTTP_STATUS=\$(curl -s -o /dev/null -w "%{http_code}" https://\$CLOUDFRONT_DOMAIN)
+                            
+                            if [ "\$HTTP_STATUS" = "200" ]; then
+                                echo "Frontend deployment verification passed - Site is accessible"
+                            else
+                                echo "Frontend deployment verification failed - HTTP Status: \$HTTP_STATUS"
+                                exit 1
+                            fi
+                        """
+                    }
                 }
             }
         }

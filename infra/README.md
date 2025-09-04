@@ -25,6 +25,10 @@ This guide explains how to deploy the complete infrastructure stack using Jenkin
 - Jenkins server with AWS credentials plugin
 - Terraform plugin installed
 - Email notification configured
+- **AWS Credentials** configured in Jenkins:
+  - Go to Jenkins → Manage Jenkins → Manage Credentials
+  - Add AWS credentials with ID: `aws-credentials`
+  - Use either AWS Access Key/Secret Key or IAM Role
 
 ### 3. Terraform Backend
 - S3 bucket for state storage
