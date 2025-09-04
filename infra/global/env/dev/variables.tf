@@ -31,17 +31,6 @@ variable "cloudfront_domain_name" {
   default     = ""
 }
 
-variable "create_cloudfront_certificate" {
-  description = "Whether to create an ACM certificate for CloudFront"
-  type        = bool
-  default     = true
-}
-
-variable "cloudfront_subject_alternative_names" {
-  description = "List of subject alternative names for CloudFront certificate"
-  type        = list(string)
-  default     = []
-}
 
 # ALB Configuration
 variable "alb_subdomain" {
@@ -56,17 +45,6 @@ variable "alb_dns_name" {
   default     = ""
 }
 
-variable "create_alb_certificate" {
-  description = "Whether to create an ACM certificate for ALB"
-  type        = bool
-  default     = true
-}
-
-variable "alb_subject_alternative_names" {
-  description = "List of subject alternative names for ALB certificate"
-  type        = list(string)
-  default     = []
-}
 
 # CNAME Configuration
 variable "create_cname_record" {
@@ -107,12 +85,6 @@ variable "txt_name" {
   default     = ""
 }
 
-# Certificate Validation
-variable "create_validation_records" {
-  description = "Whether to create Route 53 validation records"
-  type        = bool
-  default     = true
-}
 
 variable "tags" {
   description = "A map of tags to assign to the resources"

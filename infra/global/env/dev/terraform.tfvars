@@ -8,13 +8,9 @@ create_hosted_zone = true
 
 # CloudFront Configuration
 cloudfront_subdomain = "www"  # Will create www.example.com
-create_cloudfront_certificate = true
-cloudfront_subject_alternative_names = ["example.com", "www.example.com"]
 
 # ALB Configuration
 alb_subdomain = "api"  # Will create api.example.com
-create_alb_certificate = true
-alb_subject_alternative_names = ["api.example.com"]
 
 # CNAME Configuration (optional)
 create_cname_record = false
@@ -29,8 +25,6 @@ mx_records = []
 txt_records = []
 txt_name = ""
 
-# Certificate Validation
-create_validation_records = true
 
 tags = {
   Environment = "dev"

@@ -16,11 +16,6 @@ provider "aws" {
   region = var.aws_region
 }
 
-# AWS provider for us-east-1 (required for CloudFront certificates)
-provider "aws" {
-  alias  = "us_east_1"
-  region = "us-east-1"
-}
 
 # Route 53 Hosted Zone
 module "route53" {
@@ -61,35 +56,3 @@ module "route53" {
   )
 }
 
-# ACM Certificates
-module "acm" {
-  source = "../../../modules/acm"
-
-  domain_name     = var.domain_name
-  hosted_zone_id  = module.route53.hosted_zone_id
-
-  # CloudFront certificate (must be in us-east-1)
-  create_cloudfront_certificate        = var.create_cloudfront_certificate
-  cloudfront_subject_alternative_names = var.cloudfront_subject_alternative_names
-
-  # ALB certificate
-  create_alb_certificate        = var.create_alb_certificate
-  alb_subject_alternative_names = var.alb_subject_alternative_names
-
-  # Validation
-  create_validation_records = var.create_validation_records
-
-  # Provider configurations
-  providers = {
-    aws.us_east_1 = aws.us_east_1
-  }
-
-  tags = merge(
-    var.tags,
-    {
-      Environment = "dev"
-      Component   = "global"
-      Purpose     = "ssl"
-    }
-  )
-}
