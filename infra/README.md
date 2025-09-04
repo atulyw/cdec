@@ -152,21 +152,48 @@ terraform apply
 
 ## Jenkins Job Configuration
 
+### Prerequisites for Jenkins Setup
+
+1. **Jenkins Plugins Required**:
+   - Git Plugin
+   - Pipeline Plugin
+   - AWS Credentials Plugin
+   - Email Extension Plugin
+
+2. **AWS Credentials Setup**:
+   - Add AWS credentials in Jenkins Credentials Store
+   - Use AWS Access Key ID and Secret Access Key
+   - Credential ID: `aws-credentials`
+
+3. **Repository Access**:
+   - Ensure Jenkins has access to the GitHub repository
+   - Configure SSH keys or HTTPS authentication
+
+### Creating Jenkins Jobs
+
+For each job, follow these steps:
+
+1. **Create New Item** → **Pipeline**
+2. **Configure Pipeline**:
+   - Select "Pipeline script from SCM"
+   - SCM: Git
+   - Repository URL: `https://github.com/atulyw/cdec.git`
+   - Branch Specifier: `cdec-devops-project`
+   - Script Path: `infra/{component}/Jenkinsfile`
+
+3. **Configure Build Parameters** (as specified below)
+4. **Save** the job configuration
+
 ### 1. Global Infrastructure Job
 
 **Job Name**: `infra-global-deploy`
 
 **Pipeline Configuration**:
-```groovy
-pipeline {
-    agent any
-    definition {
-        cps {
-            script: readFileFromWorkspace('infra/global/Jenkinsfile')
-        }
-    }
-}
-```
+- **Pipeline script from SCM**
+- **SCM**: Git
+- **Repository URL**: `https://github.com/atulyw/cdec.git`
+- **Branch Specifier**: `cdec-devops-project`
+- **Script Path**: `infra/global/Jenkinsfile`
 
 **Build Parameters**:
 - `ENVIRONMENT` (Choice): dev, stage, prod
@@ -178,16 +205,11 @@ pipeline {
 **Job Name**: `infra-backend-deploy`
 
 **Pipeline Configuration**:
-```groovy
-pipeline {
-    agent any
-    definition {
-        cps {
-            script: readFileFromWorkspace('infra/backend/Jenkinsfile')
-        }
-    }
-}
-```
+- **Pipeline script from SCM**
+- **SCM**: Git
+- **Repository URL**: `https://github.com/atulyw/cdec.git`
+- **Branch Specifier**: `cdec-devops-project`
+- **Script Path**: `infra/backend/Jenkinsfile`
 
 **Build Parameters**:
 - `ENVIRONMENT` (Choice): dev, stage, prod
@@ -200,16 +222,11 @@ pipeline {
 **Job Name**: `infra-frontend-deploy`
 
 **Pipeline Configuration**:
-```groovy
-pipeline {
-    agent any
-    definition {
-        cps {
-            script: readFileFromWorkspace('infra/frontend/Jenkinsfile')
-        }
-    }
-}
-```
+- **Pipeline script from SCM**
+- **SCM**: Git
+- **Repository URL**: `https://github.com/atulyw/cdec.git`
+- **Branch Specifier**: `cdec-devops-project`
+- **Script Path**: `infra/frontend/Jenkinsfile`
 
 **Build Parameters**:
 - `ENVIRONMENT` (Choice): dev, stage, prod
