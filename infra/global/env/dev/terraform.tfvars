@@ -3,14 +3,14 @@
 aws_region = "eu-west-1"
 
 # Domain Configuration
-domain_name = "example.com"  # Replace with your actual domain
+domain_name = "myapp-dev.com"  # Replace with your actual domain
 create_hosted_zone = true
 
 # CloudFront Configuration
-cloudfront_subdomain = "www"  # Will create www.example.com
+cloudfront_subdomain = "www"  # Will create www.myapp-dev.com
 
 # ALB Configuration
-alb_subdomain = "api"  # Will create api.example.com
+alb_subdomain = "api"  # Will create api.myapp-dev.com
 
 # CNAME Configuration (optional)
 create_cname_record = false
