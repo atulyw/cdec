@@ -47,7 +47,7 @@ terraform apply
 ```
 
 **Resources Created**:
-- S3 bucket: `terraform-state-bucket`
+- S3 bucket: `terraform-state-bucket-cdec`
 - DynamoDB table: `terraform-state-lock`
 
 ### Step 2: Deploy Global Infrastructure
@@ -240,18 +240,21 @@ For each job, follow these steps:
 
 ### Development Environment
 - **Domain**: `dev.example.com`
+- **Region**: `eu-west-1`
 - **Instance Types**: t3.small (cost-optimized)
 - **Node Count**: 1-3 nodes
 - **Price Class**: PriceClass_100
 
 ### Staging Environment
 - **Domain**: `stage.example.com`
+- **Region**: `eu-west-1`
 - **Instance Types**: t3.medium
 - **Node Count**: 2-4 nodes
 - **Price Class**: PriceClass_200
 
 ### Production Environment
 - **Domain**: `example.com`
+- **Region**: `eu-west-1`
 - **Instance Types**: t3.large
 - **Node Count**: 3-6 nodes
 - **Price Class**: PriceClass_All
@@ -271,7 +274,7 @@ aws acm list-certificates --region us-west-2
 ### After Backend Deployment
 ```bash
 # Check EKS cluster
-aws eks describe-cluster --name backend-dev-cluster --region us-west-2
+aws eks describe-cluster --name backend-dev-cluster --region eu-west-1
 
 # Check VPC
 aws ec2 describe-vpcs --filters "Name=tag:Name,Values=backend-dev-vpc"
@@ -317,9 +320,9 @@ curl -I https://www.dev.example.com
 
 ```bash
 # Check Terraform state
-aws s3 ls s3://terraform-state-bucket/global/dev/
-aws s3 ls s3://terraform-state-bucket/backend/dev/
-aws s3 ls s3://terraform-state-bucket/frontend/dev/
+aws s3 ls s3://terraform-state-bucket-cdec/global/dev/
+aws s3 ls s3://terraform-state-bucket-cdec/backend/dev/
+aws s3 ls s3://terraform-state-bucket-cdec/frontend/dev/
 
 # Check DynamoDB locks
 aws dynamodb scan --table-name terraform-state-lock
