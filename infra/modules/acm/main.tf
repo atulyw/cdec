@@ -1,5 +1,15 @@
 # ACM Module - SSL Certificate Management
 
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+      configuration_aliases = [aws.us_east_1]
+    }
+  }
+}
+
 # ACM Certificate for CloudFront (must be in us-east-1)
 resource "aws_acm_certificate" "cloudfront" {
   count = var.create_cloudfront_certificate ? 1 : 0
@@ -46,27 +56,39 @@ resource "aws_acm_certificate" "alb" {
 
 # Route 53 validation records for CloudFront certificate
 resource "aws_route53_record" "cloudfront_validation" {
-  count = var.create_cloudfront_certificate && var.create_validation_records ? length(aws_acm_certificate.cloudfront[0].domain_validation_options) : 0
+  for_each = var.create_cloudfront_certificate && var.create_validation_records ? {
+    for dvo in aws_acm_certificate.cloudfront[0].domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  } : {}
 
   provider = aws.us_east_1
 
   allow_overwrite = true
-  name            = tolist(aws_acm_certificate.cloudfront[0].domain_validation_options)[count.index].resource_record_name
-  records         = [tolist(aws_acm_certificate.cloudfront[0].domain_validation_options)[count.index].resource_record_value]
+  name            = each.value.name
+  records         = [each.value.record]
   ttl             = 60
-  type            = tolist(aws_acm_certificate.cloudfront[0].domain_validation_options)[count.index].resource_record_type
+  type            = each.value.type
   zone_id         = var.hosted_zone_id
 }
 
 # Route 53 validation records for ALB certificate
 resource "aws_route53_record" "alb_validation" {
-  count = var.create_alb_certificate && var.create_validation_records ? length(aws_acm_certificate.alb[0].domain_validation_options) : 0
+  for_each = var.create_alb_certificate && var.create_validation_records ? {
+    for dvo in aws_acm_certificate.alb[0].domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  } : {}
 
   allow_overwrite = true
-  name            = tolist(aws_acm_certificate.alb[0].domain_validation_options)[count.index].resource_record_name
-  records         = [tolist(aws_acm_certificate.alb[0].domain_validation_options)[count.index].resource_record_value]
+  name            = each.value.name
+  records         = [each.value.record]
   ttl             = 60
-  type            = tolist(aws_acm_certificate.alb[0].domain_validation_options)[count.index].resource_record_type
+  type            = each.value.type
   zone_id         = var.hosted_zone_id
 }
 
