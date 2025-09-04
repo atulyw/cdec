@@ -57,12 +57,13 @@ pipeline {
                         sh """
                             cd ${env.WORKSPACE_PATH}
                             
-                            # Create backend configuration
-                            cat > backend.tf << 'EOF'
+                            # Create backend configuration with a timestamp to ensure fresh state
+                            TIMESTAMP=\$(date +%Y%m%d%H%M%S)
+                            cat > backend.tf << EOF
 terraform {
   backend "s3" {
     bucket         = "terraform-state-bucket-cdec"
-    key            = "global/dev/terraform-v2.tfstate"
+    key            = "global/dev/terraform-\${TIMESTAMP}.tfstate"
     region         = "eu-west-1"
     encrypt        = true
     dynamodb_table = "terraform-state-lock"
@@ -74,8 +75,11 @@ EOF
                             # Clean any existing local state files that might cause conflicts
                             rm -f terraform.tfstate* .terraform.lock.hcl
                             
-                            # Initialize Terraform
-                            terraform init -upgrade
+                            # Remove any existing .terraform directory to force fresh initialization
+                            rm -rf .terraform
+                            
+                            # Initialize Terraform with completely fresh state
+                            terraform init
                         """
                     }
                 }
