@@ -54,11 +54,12 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 script {
-                    sh """
-                        cd ${env.WORKSPACE_PATH}
-                        
-                        # Create backend configuration
-                        cat > backend.tf << 'EOF'
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            cd ${env.WORKSPACE_PATH}
+                            
+                            # Create backend configuration
+                            cat > backend.tf << 'EOF'
 terraform {
   backend "s3" {
     bucket         = "terraform-state-bucket-cdec"
@@ -66,12 +67,14 @@ terraform {
     region         = "eu-west-1"
     encrypt        = true
     dynamodb_table = "terraform-state-lock"
+    use_lockfile   = true
   }
 }
 EOF
-                        
-                        terraform init -upgrade
-                    """
+                            
+                            terraform init -upgrade
+                        """
+                    }
                 }
             }
         }
@@ -79,11 +82,13 @@ EOF
         stage('Terraform Plan') {
             steps {
                 script {
-                    sh """
-                        cd ${env.WORKSPACE_PATH}
-                        terraform workspace select ${env.TF_WORKSPACE} || terraform workspace new ${env.TF_WORKSPACE}
-                        terraform plan -out=tfplan-${params.ENVIRONMENT}.out
-                    """
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            cd ${env.WORKSPACE_PATH}
+                            terraform workspace select ${env.TF_WORKSPACE} || terraform workspace new ${env.TF_WORKSPACE}
+                            terraform plan -out=tfplan-${params.ENVIRONMENT}.out
+                        """
+                    }
                 }
             }
             post {
@@ -96,17 +101,19 @@ EOF
         stage('Terraform Apply') {
             steps {
                 script {
-                    if (params.AUTO_APPROVE) {
-                        sh """
-                            cd ${env.WORKSPACE_PATH}
-                            terraform apply -auto-approve tfplan-${params.ENVIRONMENT}.out
-                        """
-                    } else {
-                        input message: "Apply Terraform changes for ${params.ENVIRONMENT} environment?", ok: 'Apply'
-                        sh """
-                            cd ${env.WORKSPACE_PATH}
-                            terraform apply tfplan-${params.ENVIRONMENT}.out
-                        """
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        if (params.AUTO_APPROVE) {
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+                                terraform apply -auto-approve tfplan-${params.ENVIRONMENT}.out
+                            """
+                        } else {
+                            input message: "Apply Terraform changes for ${params.ENVIRONMENT} environment?", ok: 'Apply'
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+                                terraform apply tfplan-${params.ENVIRONMENT}.out
+                            """
+                        }
                     }
                 }
             }
@@ -115,10 +122,12 @@ EOF
         stage('Output Values') {
             steps {
                 script {
-                    sh """
-                        cd ${env.WORKSPACE_PATH}
-                        terraform output -json > terraform-outputs.json
-                    """
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            cd ${env.WORKSPACE_PATH}
+                            terraform output -json > terraform-outputs.json
+                        """
+                    }
                 }
                 archiveArtifacts artifacts: "${env.WORKSPACE_PATH}/terraform-outputs.json", fingerprint: true
             }

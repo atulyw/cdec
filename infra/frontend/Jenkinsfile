@@ -96,11 +96,12 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 script {
-                    sh """
-                        cd ${env.WORKSPACE_PATH}
-                        
-                        # Create backend configuration
-                        cat > backend.tf << 'EOF'
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            cd ${env.WORKSPACE_PATH}
+                            
+                            # Create backend configuration
+                            cat > backend.tf << 'EOF'
 terraform {
   backend "s3" {
     bucket         = "terraform-state-bucket-cdec"
@@ -108,12 +109,14 @@ terraform {
     region         = "eu-west-1"
     encrypt        = true
     dynamodb_table = "terraform-state-lock"
+    use_lockfile   = true
   }
 }
 EOF
-                        
-                        terraform init -upgrade
-                    """
+                            
+                            terraform init -upgrade
+                        """
+                    }
                 }
             }
         }
@@ -121,11 +124,13 @@ EOF
         stage('Terraform Plan') {
             steps {
                 script {
-                    sh """
-                        cd ${env.WORKSPACE_PATH}
-                        terraform workspace select ${env.TF_WORKSPACE} || terraform workspace new ${env.TF_WORKSPACE}
-                        terraform plan -out=tfplan-${params.ENVIRONMENT}.out
-                    """
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            cd ${env.WORKSPACE_PATH}
+                            terraform workspace select ${env.TF_WORKSPACE} || terraform workspace new ${env.TF_WORKSPACE}
+                            terraform plan -out=tfplan-${params.ENVIRONMENT}.out
+                        """
+                    }
                 }
             }
             post {
