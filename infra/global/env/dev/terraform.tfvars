@@ -1,6 +1,6 @@
 # Global Infrastructure - Development Environment Configuration
 
-aws_region = "us-west-2"
+aws_region = "eu-west-1"
 
 # Domain Configuration
 domain_name = "example.com"  # Replace with your actual domain

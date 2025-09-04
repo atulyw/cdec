@@ -1,6 +1,6 @@
 # Frontend Infrastructure - Development Environment Configuration
 
-aws_region = "us-west-2"
+aws_region = "eu-west-1"
 
 # S3 Configuration
 s3_bucket_name     = "frontend-dev-website"
