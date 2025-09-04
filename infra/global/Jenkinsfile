@@ -95,7 +95,7 @@ EOF
             }
             post {
                 always {
-                    archiveArtifacts artifacts: "tfplan-${params.ENVIRONMENT}.out", fingerprint: true
+                    archiveArtifacts artifacts: "infra/global/env/dev/tfplan-${params.ENVIRONMENT}.out", fingerprint: true
                 }
             }
         }
@@ -131,7 +131,7 @@ EOF
                         """
                     }
                 }
-                archiveArtifacts artifacts: "terraform-outputs.json", fingerprint: true
+                archiveArtifacts artifacts: "infra/global/env/dev/terraform-outputs.json", fingerprint: true
             }
         }
     }
