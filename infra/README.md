@@ -328,6 +328,11 @@ aws s3 ls s3://terraform-state-bucket-cdec/global/dev/
 aws s3 ls s3://terraform-state-bucket-cdec/backend/dev/
 aws s3 ls s3://terraform-state-bucket-cdec/frontend/dev/
 
+# Check new state files (v2)
+aws s3 ls s3://terraform-state-bucket-cdec/global/dev/terraform-v2.tfstate
+aws s3 ls s3://terraform-state-bucket-cdec/backend/dev/terraform-v2.tfstate
+aws s3 ls s3://terraform-state-bucket-cdec/frontend/dev/terraform-v2.tfstate
+
 # Check DynamoDB locks
 aws dynamodb scan --table-name terraform-state-lock
 

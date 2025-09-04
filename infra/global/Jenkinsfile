@@ -25,7 +25,7 @@ pipeline {
         TF_VAR_environment = "${params.ENVIRONMENT}"
         AWS_DEFAULT_REGION = 'eu-west-1'
         TF_STATE_BUCKET = 'terraform-state-bucket-cdec'
-        TF_STATE_KEY = 'global/${params.ENVIRONMENT}/terraform.tfstate'
+        TF_STATE_KEY = 'global/${params.ENVIRONMENT}/terraform-v2.tfstate'
         TF_STATE_REGION = 'eu-west-1'
     }
     
@@ -57,12 +57,12 @@ pipeline {
                         sh """
                             cd ${env.WORKSPACE_PATH}
                             
-                            # Create backend configuration
+                            # Create backend configuration with a new state key to avoid conflicts
                             cat > backend.tf << 'EOF'
 terraform {
   backend "s3" {
     bucket         = "terraform-state-bucket-cdec"
-    key            = "global/dev/terraform.tfstate"
+    key            = "global/dev/terraform-v2.tfstate"
     region         = "eu-west-1"
     encrypt        = true
     dynamodb_table = "terraform-state-lock"
@@ -74,6 +74,7 @@ EOF
                             # Clean any existing local state files that might cause conflicts
                             rm -f terraform.tfstate* .terraform.lock.hcl
                             
+                            # Initialize Terraform
                             terraform init -upgrade
                         """
                     }
