@@ -57,7 +57,7 @@ pipeline {
                         sh """
                             cd ${env.WORKSPACE_PATH}
                             
-                            # Create backend configuration with a new state key to avoid conflicts
+                            # Create backend configuration
                             cat > backend.tf << 'EOF'
 terraform {
   backend "s3" {

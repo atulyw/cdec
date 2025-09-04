@@ -79,6 +79,11 @@ module "acm" {
   # Validation
   create_validation_records = var.create_validation_records
 
+  # Provider configurations
+  providers = {
+    aws.us_east_1 = aws.us_east_1
+  }
+
   tags = merge(
     var.tags,
     {
