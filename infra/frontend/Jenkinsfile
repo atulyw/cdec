@@ -143,17 +143,19 @@ EOF
         stage('Terraform Apply') {
             steps {
                 script {
-                    if (params.AUTO_APPROVE) {
-                        sh """
-                            cd ${env.WORKSPACE_PATH}
-                            terraform apply -auto-approve tfplan-${params.ENVIRONMENT}.out
-                        """
-                    } else {
-                        input message: "Apply Terraform changes for ${params.ENVIRONMENT} environment?", ok: 'Apply'
-                        sh """
-                            cd ${env.WORKSPACE_PATH}
-                            terraform apply tfplan-${params.ENVIRONMENT}.out
-                        """
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        if (params.AUTO_APPROVE) {
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+                                terraform apply -auto-approve tfplan-${params.ENVIRONMENT}.out
+                            """
+                        } else {
+                            input message: "Apply Terraform changes for ${params.ENVIRONMENT} environment?", ok: 'Apply'
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+                                terraform apply tfplan-${params.ENVIRONMENT}.out
+                            """
+                        }
                     }
                 }
             }
@@ -165,22 +167,24 @@ EOF
             }
             steps {
                 script {
-                    sh """
-                        # Get S3 bucket name from terraform output
-                        BUCKET_NAME=\$(cd ${env.WORKSPACE_PATH} && terraform output -raw s3_bucket_name)
-                        
-                        # Check if build directory exists
-                        if [ ! -d "${WORKSPACE}/${params.FRONTEND_BUILD_PATH}" ]; then
-                            echo "Frontend build directory not found at ${params.FRONTEND_BUILD_PATH}"
-                            echo "Please build your frontend application first"
-                            exit 1
-                        fi
-                        
-                        # Upload files to S3
-                        aws s3 sync ${WORKSPACE}/${params.FRONTEND_BUILD_PATH} s3://\$BUCKET_NAME --delete
-                        
-                        echo "Frontend assets deployed to S3 bucket: \$BUCKET_NAME"
-                    """
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            # Get S3 bucket name from terraform output
+                            BUCKET_NAME=\$(cd ${env.WORKSPACE_PATH} && terraform output -raw s3_bucket_name)
+                            
+                            # Check if build directory exists
+                            if [ ! -d "${WORKSPACE}/${params.FRONTEND_BUILD_PATH}" ]; then
+                                echo "Frontend build directory not found at ${params.FRONTEND_BUILD_PATH}"
+                                echo "Please build your frontend application first"
+                                exit 1
+                            fi
+                            
+                            # Upload files to S3
+                            aws s3 sync ${WORKSPACE}/${params.FRONTEND_BUILD_PATH} s3://\$BUCKET_NAME --delete
+                            
+                            echo "Frontend assets deployed to S3 bucket: \$BUCKET_NAME"
+                        """
+                    }
                 }
             }
         }
@@ -191,15 +195,17 @@ EOF
             }
             steps {
                 script {
-                    sh """
-                        # Get CloudFront distribution ID from terraform output
-                        DISTRIBUTION_ID=\$(cd ${env.WORKSPACE_PATH} && terraform output -raw cloudfront_distribution_id)
-                        
-                        # Create CloudFront invalidation
-                        aws cloudfront create-invalidation --distribution-id \$DISTRIBUTION_ID --paths "/*"
-                        
-                        echo "CloudFront cache invalidation created for distribution: \$DISTRIBUTION_ID"
-                    """
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            # Get CloudFront distribution ID from terraform output
+                            DISTRIBUTION_ID=\$(cd ${env.WORKSPACE_PATH} && terraform output -raw cloudfront_distribution_id)
+                            
+                            # Create CloudFront invalidation
+                            aws cloudfront create-invalidation --distribution-id \$DISTRIBUTION_ID --paths "/*"
+                            
+                            echo "CloudFront cache invalidation created for distribution: \$DISTRIBUTION_ID"
+                        """
+                    }
                 }
             }
         }
@@ -207,10 +213,12 @@ EOF
         stage('Output Values') {
             steps {
                 script {
-                    sh """
-                        cd ${env.WORKSPACE_PATH}
-                        terraform output -json > terraform-outputs.json
-                    """
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            cd ${env.WORKSPACE_PATH}
+                            terraform output -json > terraform-outputs.json
+                        """
+                    }
                 }
                 archiveArtifacts artifacts: "${env.WORKSPACE_PATH}/terraform-outputs.json", fingerprint: true
             }
