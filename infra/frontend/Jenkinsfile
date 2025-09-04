@@ -143,12 +143,6 @@ EOF
         }
         
         stage('Terraform Apply') {
-            when {
-                anyOf {
-                    params.AUTO_APPROVE
-                    not { params.AUTO_APPROVE }
-                }
-            }
             steps {
                 script {
                     if (params.AUTO_APPROVE) {
