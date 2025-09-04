@@ -40,20 +40,11 @@ pipeline {
             }
         }
         
-        stage('Setup Terraform') {
+        stage('Verify Terraform') {
             steps {
                 script {
                     sh """
                         cd ${env.WORKSPACE_PATH}
-                        
-                        # Install Terraform if not present
-                        if ! command -v terraform &> /dev/null; then
-                            wget https://releases.hashicorp.com/terraform/${params.TERRAFORM_VERSION}/terraform_${params.TERRAFORM_VERSION}_linux_amd64.zip
-                            unzip terraform_${params.TERRAFORM_VERSION}_linux_amd64.zip
-                            sudo mv terraform /usr/local/bin/
-                            rm terraform_${params.TERRAFORM_VERSION}_linux_amd64.zip
-                        fi
-                        
                         terraform version
                     """
                 }
