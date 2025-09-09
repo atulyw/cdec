@@ -1,0 +1,173 @@
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['development', 'staging', 'production'],
+            description: 'Select the deployment environment'
+        )
+        string(
+            name: 'VERSION',
+            defaultValue: '1.0.0',
+            description: 'Application version to deploy'
+        )
+        booleanParam(
+            name: 'SKIP_TESTS',
+            defaultValue: false,
+            description: 'Skip running tests (not recommended for production)'
+        )
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo "Checking out code from repository..."
+                checkout scm
+                script {
+                    env.GIT_COMMIT_SHORT = sh(
+                        script: 'git rev-parse --short HEAD',
+                        returnStdout: true
+                    ).trim()
+                }
+                echo "Checked out commit: ${env.GIT_COMMIT_SHORT}"
+            }
+        }
+        
+        stage('Build') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                    changeset "**/*.java"
+                    changeset "**/*.js"
+                    changeset "**/*.py"
+                }
+            }
+            steps {
+                echo "Building application version ${params.VERSION}..."
+                script {
+                    if (params.ENVIRONMENT == 'production') {
+                        echo "Production build - using optimized settings"
+                    } else {
+                        echo "Non-production build - using standard settings"
+                    }
+                }
+                // Simulate build process
+                sh 'echo "Build completed successfully"'
+            }
+        }
+        
+        stage('Test') {
+            when {
+                not { params.SKIP_TESTS }
+            }
+            steps {
+                echo "Running tests for environment: ${params.ENVIRONMENT}"
+                script {
+                    if (params.ENVIRONMENT == 'production') {
+                        echo "Running full test suite for production"
+                    } else {
+                        echo "Running basic test suite"
+                    }
+                }
+                // Simulate test execution
+                sh 'echo "All tests passed"'
+            }
+        }
+        
+        stage('Deploy to Development') {
+            when {
+                allOf {
+                    params.ENVIRONMENT == 'development'
+                    anyOf {
+                        branch 'develop'
+                        changeset "**/*.java"
+                    }
+                }
+            }
+            steps {
+                echo "Deploying to development environment..."
+                sh 'echo "Deployment to development completed"'
+            }
+        }
+        
+        stage('Deploy to Staging') {
+            when {
+                allOf {
+                    params.ENVIRONMENT == 'staging'
+                    branch 'main'
+                }
+            }
+            steps {
+                echo "Deploying to staging environment..."
+                sh 'echo "Deployment to staging completed"'
+            }
+        }
+        
+        stage('Manual Approval for Production') {
+            when {
+                allOf {
+                    params.ENVIRONMENT == 'production'
+                    branch 'main'
+                }
+            }
+            steps {
+                script {
+                    echo "Production deployment requires manual approval"
+                    echo "Version: ${params.VERSION}"
+                    echo "Commit: ${env.GIT_COMMIT_SHORT}"
+                }
+            }
+        }
+        
+        stage('Deploy to Production') {
+            when {
+                allOf {
+                    params.ENVIRONMENT == 'production'
+                    branch 'main'
+                }
+            }
+            steps {
+                input message: 'Deploy to Production?', ok: 'Deploy'
+                echo "Deploying to production environment..."
+                script {
+                    echo "Production deployment in progress..."
+                    echo "Version: ${params.VERSION}"
+                    echo "Commit: ${env.GIT_COMMIT_SHORT}"
+                }
+                sh 'echo "Deployment to production completed successfully"'
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo "Pipeline execution completed"
+            cleanWs()
+        }
+        success {
+            echo "✅ Pipeline executed successfully!"
+            script {
+                if (params.ENVIRONMENT == 'production') {
+                    echo "🎉 Production deployment completed successfully!"
+                } else {
+                    echo "✅ Deployment to ${params.ENVIRONMENT} completed successfully!"
+                }
+            }
+        }
+        failure {
+            echo "❌ Pipeline failed!"
+            script {
+                if (params.ENVIRONMENT == 'production') {
+                    echo "🚨 Production deployment failed! Please check logs immediately!"
+                } else {
+                    echo "⚠️ Deployment to ${params.ENVIRONMENT} failed. Please check logs."
+                }
+            }
+        }
+        unstable {
+            echo "⚠️ Pipeline completed with warnings"
+        }
+    }
+}
