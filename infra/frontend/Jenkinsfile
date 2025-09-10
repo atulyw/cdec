@@ -57,7 +57,7 @@ pipeline {
         stage('Check Backend Dependencies') {
             when {
                 not {
-                    params.SKIP_BACKEND_CHECK
+                    expression { params.SKIP_BACKEND_CHECK }
                 }
             }
             steps {
@@ -166,7 +166,7 @@ EOF
         
         stage('Deploy Frontend Assets') {
             when {
-                params.DEPLOY_FRONTEND_ASSETS
+                expression { params.DEPLOY_FRONTEND_ASSETS }
             }
             steps {
                 script {
@@ -194,7 +194,7 @@ EOF
         
         stage('Invalidate CloudFront Cache') {
             when {
-                params.DEPLOY_FRONTEND_ASSETS
+                expression { params.DEPLOY_FRONTEND_ASSETS }
             }
             steps {
                 script {
