@@ -3,7 +3,7 @@
 aws_region = "eu-west-1"
 
 # S3 Configuration
-s3_bucket_name     = "frontend-dev-website"
+s3_bucket_name     = "frontend-dev-website-cdec"
 s3_enable_versioning = true
 
 # CloudFront Configuration
