@@ -9,3 +9,6 @@ target/
 Thumbs.db
 *.log
 logs/
+.mvn/
+mvnw
+mvnw.cmd
