@@ -1,31 +1,28 @@
+// Simple Jenkins Pipeline for Backend Infrastructure
+// This pipeline creates AWS backend infrastructure using Terraform
+// Perfect for developers with 1 year of experience
+
 pipeline {
+    // Run on Jenkins agent with label 'ecs-agent'
     agent {
         label 'ecs-agent'
     }
     
+    // Parameters that user can choose when running the pipeline
     parameters {
         choice(
             name: 'ENVIRONMENT',
             choices: ['dev', 'stage', 'prod'],
-            description: 'Target environment for deployment'
+            description: 'Which environment to deploy to (dev, stage, or prod)'
         )
         booleanParam(
             name: 'AUTO_APPROVE',
             defaultValue: false,
-            description: 'Auto-approve terraform apply (use with caution)'
-        )
-        string(
-            name: 'TERRAFORM_VERSION',
-            defaultValue: '1.5.0',
-            description: 'Terraform version to use'
-        )
-        booleanParam(
-            name: 'SKIP_GLOBAL_CHECK',
-            defaultValue: false,
-            description: 'Skip global infrastructure dependency check'
+            description: 'Skip manual approval and apply changes automatically (DANGEROUS!)'
         )
     }
     
+    // Environment variables available throughout the pipeline
     environment {
         TF_VAR_environment = "${params.ENVIRONMENT}"
         AWS_DEFAULT_REGION = 'eu-west-1'
@@ -34,62 +31,32 @@ pipeline {
         TF_STATE_REGION = 'eu-west-1'
     }
     
+    // Main pipeline stages
     stages {
-        stage('Checkout') {
+        
+        // Step 1: Get the code from Git repository
+        stage('Get Code') {
             steps {
                 checkout scm
                 script {
+                    // Set the path where our Terraform files are located
                     env.WORKSPACE_PATH = "${WORKSPACE}/infra/backend/env/${params.ENVIRONMENT}"
                 }
             }
         }
         
-        stage('Check Global Dependencies') {
-            when {
-                not { params.SKIP_GLOBAL_CHECK }
-            }
+        // Step 2: Setup Terraform and connect to AWS
+        stage('Setup Terraform') {
             steps {
                 script {
-                    sh """
-                        # Check if global infrastructure exists
-                        cd ${WORKSPACE}/infra/global/env/${params.ENVIRONMENT}
-                        
-                        if [ ! -f terraform.tfstate ]; then
-                            echo "Global infrastructure not found. Please deploy global infrastructure first."
-                            exit 1
-                        fi
-                        
-                        # Verify global outputs exist
-                        terraform output hosted_zone_id > /dev/null 2>&1 || {
-                            echo "Global infrastructure outputs not available. Please redeploy global infrastructure."
-                            exit 1
-                        }
-                        
-                        echo "Global infrastructure dependency check passed"
-                    """
-                }
-            }
-        }
-        
-        stage('Verify Terraform') {
-            steps {
-                script {
-                    sh """
-                        cd ${env.WORKSPACE_PATH}
-                        terraform version
-                    """
-                }
-            }
-        }
-        
-        stage('Terraform Init') {
-            steps {
-                script {
+                    // Use AWS credentials stored in Jenkins
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
                         sh """
+                            # Go to our Terraform directory
                             cd ${env.WORKSPACE_PATH}
                             
-                            # Create backend configuration with a new state key to avoid conflicts
+                            # Create backend configuration file
+                            # This tells Terraform where to store its state file
                             cat > backend.tf << 'EOF'
 terraform {
   backend "s3" {
@@ -103,9 +70,10 @@ terraform {
 }
 EOF
                             
-                            # Clean any existing local state files that might cause conflicts
+                            # Clean up any old state files that might cause problems
                             rm -f terraform.tfstate* .terraform.lock.hcl
                             
+                            # Initialize Terraform (downloads providers and sets up backend)
                             terraform init -upgrade
                         """
                     }
@@ -113,12 +81,14 @@ EOF
             }
         }
         
-        stage('Terraform Plan') {
+        // Step 3: Plan what infrastructure will be created
+        stage('Plan Infrastructure') {
             steps {
                 script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
                         sh """
                             cd ${env.WORKSPACE_PATH}
+                            # Create a plan file showing what will be created/changed
                             terraform plan -out=tfplan-${params.ENVIRONMENT}.out
                         """
                     }
@@ -126,22 +96,26 @@ EOF
             }
             post {
                 always {
+                    // Save the plan file as an artifact so we can download it
                     archiveArtifacts artifacts: "infra/backend/env/dev/tfplan-${params.ENVIRONMENT}.out", fingerprint: true
                 }
             }
         }
         
-        stage('Terraform Apply') {
+        // Step 4: Create the infrastructure
+        stage('Create Infrastructure') {
             steps {
                 script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
                         if (params.AUTO_APPROVE) {
+                            // If auto-approve is enabled, apply changes without asking
                             sh """
                                 cd ${env.WORKSPACE_PATH}
                                 terraform apply -auto-approve tfplan-${params.ENVIRONMENT}.out
                             """
                         } else {
-                            input message: "Apply Terraform changes for ${params.ENVIRONMENT} environment?", ok: 'Apply'
+                            // Ask for manual approval before creating infrastructure
+                            input message: "Ready to create backend infrastructure for ${params.ENVIRONMENT}?", ok: 'Yes, Create'
                             sh """
                                 cd ${env.WORKSPACE_PATH}
                                 terraform apply tfplan-${params.ENVIRONMENT}.out
@@ -152,44 +126,56 @@ EOF
             }
         }
         
-        stage('Output Values') {
+        // Step 5: Show what was created
+        stage('Show Results') {
             steps {
                 script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
                         sh """
                             cd ${env.WORKSPACE_PATH}
+                            echo "=== Backend Infrastructure Created Successfully ==="
+                            # Show all the outputs from Terraform (like cluster names, URLs, etc.)
+                            terraform output
+                            # Also save outputs to a JSON file
                             terraform output -json > terraform-outputs.json
                         """
                     }
                 }
+                // Save the outputs file as an artifact
                 archiveArtifacts artifacts: "infra/backend/env/dev/terraform-outputs.json", fingerprint: true
             }
         }
         
+        // Step 6: Verify the EKS cluster is working
         stage('Verify EKS Cluster') {
             steps {
                 script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
                         sh """
-                            # Get cluster name from terraform output
+                            # Get the EKS cluster name from Terraform outputs
                             CLUSTER_NAME=\$(cd ${env.WORKSPACE_PATH} && terraform output -raw cluster_name)
                             
-                            # Verify cluster is accessible
+                            echo "Verifying EKS cluster: \$CLUSTER_NAME"
+                            
+                            # Check if the cluster exists and is accessible
                             aws eks describe-cluster --name \$CLUSTER_NAME --region ${env.AWS_DEFAULT_REGION} || {
-                                echo "EKS cluster verification failed"
+                                echo "❌ EKS cluster verification failed"
                                 exit 1
                             }
                             
-                            echo "EKS cluster verification passed"
+                            echo "✅ EKS cluster verification passed - cluster is ready!"
                         """
                     }
                 }
             }
         }
+        
     }
     
+    // What to do after the pipeline finishes
     post {
         always {
+            // Clean up temporary files
             script {
                 sh """
                     cd ${env.WORKSPACE_PATH}
@@ -198,14 +184,14 @@ EOF
             }
         }
         success {
-            echo "Backend infrastructure deployment to ${params.ENVIRONMENT} completed successfully"
+            echo "✅ Backend infrastructure created successfully for ${params.ENVIRONMENT}!"
         }
         failure {
-            echo "Backend infrastructure deployment to ${params.ENVIRONMENT} failed"
-            echo "Build ${env.BUILD_URL} failed for environment ${params.ENVIRONMENT}"
+            echo "❌ Backend infrastructure creation failed for ${params.ENVIRONMENT}"
+            echo "Check the build logs for more details: ${env.BUILD_URL}"
         }
         unstable {
-            echo "Backend infrastructure deployment to ${params.ENVIRONMENT} completed with warnings"
+            echo "⚠️ Backend infrastructure creation completed with warnings for ${params.ENVIRONMENT}"
         }
     }
 }
