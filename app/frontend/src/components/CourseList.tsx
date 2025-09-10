@@ -51,51 +51,116 @@ export const CourseList: React.FC = () => {
     }
   };
 
+  const getCourseIcon = (title: string) => {
+    if (title.toLowerCase().includes('aws')) return '☁️';
+    if (title.toLowerCase().includes('docker')) return '🐳';
+    if (title.toLowerCase().includes('kubernetes')) return '⚙️';
+    return '📚';
+  };
+
+  const getCourseGradient = (index: number) => {
+    const gradients = [
+      'from-blue-500 to-blue-600',
+      'from-purple-500 to-purple-600',
+      'from-green-500 to-green-600',
+      'from-orange-500 to-orange-600',
+      'from-pink-500 to-pink-600',
+      'from-indigo-500 to-indigo-600'
+    ];
+    return gradients[index % gradients.length];
+  };
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      <div className="flex justify-center items-center py-12">
+        <div className="text-center">
+          <div className="spinner h-12 w-12 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading courses...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-8">
-        <p className="text-red-600">{error}</p>
-        <button
-          onClick={fetchCourses}
-          className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-        >
-          Retry
-        </button>
+      <div className="text-center py-12">
+        <div className="card p-8 max-w-md mx-auto">
+          <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+            <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Failed to load courses</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={fetchCourses}
+            className="btn btn-primary btn-md"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {courses.map((course) => (
-        <div key={course.id} className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">{course.title}</h3>
-          <p className="text-gray-600 mb-4">{course.description}</p>
-          <div className="space-y-2 mb-4">
-            <p className="text-sm text-gray-500">
-              <span className="font-medium">Instructor:</span> {course.instructor}
-            </p>
-            <p className="text-sm text-gray-500">
-              <span className="font-medium">Duration:</span> {course.duration} hours
-            </p>
-            <p className="text-sm text-gray-500">
-              <span className="font-medium">Price:</span> ${course.price}
-            </p>
+    <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+      {courses.map((course, index) => (
+        <div key={course.id} className="card-hover p-6 animate-slide-up" style={{ animationDelay: `${index * 100}ms` }}>
+          {/* Course Header */}
+          <div className="flex items-start justify-between mb-4">
+            <div className={`h-12 w-12 bg-gradient-to-r ${getCourseGradient(index)} rounded-xl flex items-center justify-center text-white text-xl shadow-lg`}>
+              {getCourseIcon(course.title)}
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-gray-900">${course.price}</div>
+              <div className="text-sm text-gray-500">One-time</div>
+            </div>
           </div>
+
+          {/* Course Content */}
+          <div className="mb-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2">{course.title}</h3>
+            <p className="text-gray-600 text-sm leading-relaxed mb-4 line-clamp-3">{course.description}</p>
+            
+            {/* Course Details */}
+            <div className="space-y-3">
+              <div className="flex items-center text-sm text-gray-500">
+                <svg className="h-4 w-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span className="font-medium">Instructor:</span>
+                <span className="ml-1">{course.instructor}</span>
+              </div>
+              <div className="flex items-center text-sm text-gray-500">
+                <svg className="h-4 w-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-medium">Duration:</span>
+                <span className="ml-1">{course.duration} hours</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Enroll Button */}
           <button
             onClick={() => handleEnroll(course.id)}
             disabled={enrolling === course.id}
-            className="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn btn-primary btn-lg w-full"
           >
-            {enrolling === course.id ? 'Enrolling...' : 'Enroll Now'}
+            {enrolling === course.id ? (
+              <div className="flex items-center justify-center">
+                <div className="spinner h-4 w-4 mr-2"></div>
+                Enrolling...
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Enroll Now
+              </div>
+            )}
           </button>
         </div>
       ))}
