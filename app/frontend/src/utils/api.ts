@@ -59,6 +59,17 @@ class ApiClient {
       }
 
       console.log(`[API] Request successful`);
+      
+      // Handle server response structure: {success: true, data: {...}, error: null}
+      if (data && typeof data === 'object' && 'success' in data) {
+        return {
+          success: data.success,
+          data: data.data,
+          error: data.error,
+        };
+      }
+      
+      // Fallback for direct data response
       return {
         success: true,
         data,
