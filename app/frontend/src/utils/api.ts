@@ -20,6 +20,10 @@ class ApiClient {
     const url = `${this.baseUrl}${endpoint}`;
     const token = localStorage.getItem('token');
 
+    console.log(`[API] Making ${options.method || 'GET'} request to: ${url}`);
+    console.log(`[API] Base URL: ${this.baseUrl}`);
+    console.log(`[API] Token present: ${!!token}`);
+
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
@@ -31,23 +35,40 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
-
-      if (!response.ok) {
+      console.log(`[API] Response status: ${response.status} ${response.statusText}`);
+      
+      let data;
+      try {
+        data = await response.json();
+        console.log(`[API] Response data:`, data);
+      } catch (parseError) {
+        console.error(`[API] Failed to parse JSON response:`, parseError);
         return {
           success: false,
-          error: data.error || `HTTP ${response.status}: ${response.statusText}`,
+          error: `Invalid JSON response from server (${response.status})`,
         };
       }
 
+      if (!response.ok) {
+        const errorMessage = data?.error || data?.message || `HTTP ${response.status}: ${response.statusText}`;
+        console.error(`[API] Request failed:`, errorMessage);
+        return {
+          success: false,
+          error: errorMessage,
+        };
+      }
+
+      console.log(`[API] Request successful`);
       return {
         success: true,
         data,
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Network error';
+      console.error(`[API] Network error:`, error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Network error',
+        error: errorMessage,
       };
     }
   }

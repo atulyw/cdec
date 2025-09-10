@@ -1,14 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { LoginForm } from './components/LoginForm';
 import { CourseList } from './components/CourseList';
 import { EnrollmentsTable } from './components/EnrollmentsTable';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { DebugPanel } from './components/DebugPanel';
 
 function App() {
-  const { user, logout, loading } = useAuth();
+  const { user, logout, loading, error } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'enrollments'>('dashboard');
+
+  useEffect(() => {
+    console.log('[App] State changed:', { user, loading, error });
+  }, [user, loading, error]);
 
   if (loading) {
     return (
@@ -22,12 +28,17 @@ function App() {
   }
 
   if (!user) {
-    return <LoginForm isLogin={isLogin} onToggleMode={() => setIsLogin(!isLogin)} />;
+    return (
+      <ErrorBoundary>
+        <LoginForm isLogin={isLogin} onToggleMode={() => setIsLogin(!isLogin)} />
+      </ErrorBoundary>
+    );
   }
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
+    <ErrorBoundary>
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50">
         {/* Navigation */}
         <nav className="bg-white shadow-lg border-b border-gray-200">
           <div className="container">
@@ -152,8 +163,10 @@ function App() {
             </div>
           )}
         </main>
-      </div>
-    </ProtectedRoute>
+        </div>
+        <DebugPanel />
+      </ProtectedRoute>
+    </ErrorBoundary>
   );
 }
 

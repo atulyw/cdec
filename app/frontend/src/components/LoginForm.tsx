@@ -22,18 +22,19 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, isLogin }) =
     setLoading(true);
 
     try {
-      let success = false;
+      let result;
       if (isLogin) {
-        success = await login(formData.email, formData.password);
+        result = await login(formData.email, formData.password);
       } else {
-        success = await register(formData.name, formData.email, formData.password);
+        result = await register(formData.name, formData.email, formData.password);
       }
 
-      if (!success) {
-        setError(isLogin ? 'Invalid email or password' : 'Registration failed');
+      if (!result.success) {
+        setError(result.error || (isLogin ? 'Invalid email or password' : 'Registration failed'));
       }
     } catch (error) {
-      setError('An error occurred. Please try again.');
+      console.error('[LoginForm] Unexpected error:', error);
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
