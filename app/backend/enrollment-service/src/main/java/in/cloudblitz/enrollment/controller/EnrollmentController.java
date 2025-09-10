@@ -15,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/enroll")
-@CrossOrigin(origins = "https://cloudblitz.in")
+@CrossOrigin(origins = "*")
 public class EnrollmentController {
 
     @Autowired

@@ -14,7 +14,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/courses")
-@CrossOrigin(origins = "https://cloudblitz.in")
+@CrossOrigin(origins = "*")
 public class CourseController {
 
     @Autowired

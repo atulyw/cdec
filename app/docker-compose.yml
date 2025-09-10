@@ -72,9 +72,9 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_AUTH_API: http://localhost:8081/api/auth
-      VITE_COURSE_API: http://localhost:8082/api/courses
-      VITE_ENROLL_API: http://localhost:8083/api/enroll
+      VITE_AUTH_API: http://52.50.190.57:8081/api/auth
+      VITE_COURSE_API: http://52.50.190.57:8082/api/courses
+      VITE_ENROLL_API: http://52.50.190.57:8083/api/enroll
     depends_on:
       - auth-service
       - course-service
