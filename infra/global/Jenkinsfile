@@ -63,7 +63,7 @@ pipeline {
 terraform {
   backend "s3" {
     bucket         = "terraform-state-bucket-cdec"
-    key            = "global/dev/terraform-\${TIMESTAMP}.tfstate"
+    key            = "global/dev/terraform-global.tfstate"
     region         = "eu-west-1"
     encrypt        = true
     dynamodb_table = "terraform-state-lock"
