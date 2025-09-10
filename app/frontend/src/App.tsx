@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { LoginForm } from './components/LoginForm';
 import { CourseList } from './components/CourseList';

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { enrollApi, ApiResponse } from '../utils/api';
+import { enrollApi } from '../utils/api';
+import type { ApiResponse } from '../utils/api';
 
 export interface Enrollment {
   id: string;

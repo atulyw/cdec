@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { courseApi, enrollApi, ApiResponse } from '../utils/api';
+import { courseApi, enrollApi } from '../utils/api';
+import type { ApiResponse } from '../utils/api';
 
 export interface Course {
   id: string;

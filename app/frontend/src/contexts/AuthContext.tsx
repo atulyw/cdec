@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authApi, ApiResponse } from '../utils/api';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import { authApi } from '../utils/api';
+import type { ApiResponse } from '../utils/api';
 
 export interface User {
   id: string;
@@ -9,7 +11,6 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -32,13 +33,11 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
     if (storedToken) {
-      setToken(storedToken);
       // Verify token and get user info
       verifyToken(storedToken);
     } else {
@@ -54,11 +53,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else {
         // Token is invalid, remove it
         localStorage.removeItem('token');
-        setToken(null);
       }
     } catch (error) {
       localStorage.removeItem('token');
-      setToken(null);
     } finally {
       setLoading(false);
     }
@@ -74,7 +71,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.success && response.data) {
         const { token: newToken, user: userData } = response.data;
         localStorage.setItem('token', newToken);
-        setToken(newToken);
         setUser(userData);
         return true;
       }
@@ -95,7 +91,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.success && response.data) {
         const { token: newToken, user: userData } = response.data;
         localStorage.setItem('token', newToken);
-        setToken(newToken);
         setUser(userData);
         return true;
       }
@@ -107,13 +102,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
-    setToken(null);
     setUser(null);
   };
 
   const value: AuthContextType = {
     user,
-    token,
     login,
     register,
     logout,
