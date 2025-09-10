@@ -23,7 +23,7 @@ services:
       - "8081:8081"
     environment:
       MONGO_URI: mongodb://admin:password@mongo:27017/cb_auth?authSource=admin
-      JWT_SECRET: mySecretKey
+      JWT_SECRET: CloudBlitzJWTSecretKeyForSecureAuthentication2024!@#
       SERVER_PORT: 8081
     depends_on:
       - mongo
@@ -56,7 +56,7 @@ services:
       - "8083:8083"
     environment:
       MONGO_URI: mongodb://admin:password@mongo:27017/cb_enrollments?authSource=admin
-      JWT_SECRET: mySecretKey
+      JWT_SECRET: CloudBlitzJWTSecretKeyForSecureAuthentication2024!@#
       SERVER_PORT: 8083
     depends_on:
       - mongo

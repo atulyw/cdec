@@ -13,7 +13,7 @@ spring:
       password: admin
 
 jwt:
-  secret: ${JWT_SECRET:mySecretKey}
+  secret: ${JWT_SECRET:CloudBlitzJWTSecretKeyForSecureAuthentication2024!@#}
   expiration: 86400000 # 24 hours
 
 logging:
