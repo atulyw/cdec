@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { authApi } from '../utils/api';
-import type { ApiResponse } from '../utils/api';
 
 export interface User {
   id: string;
@@ -39,13 +38,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const storedToken = localStorage.getItem('token');
     if (storedToken) {
       // Verify token and get user info
-      verifyToken(storedToken);
+      verifyToken();
     } else {
       setLoading(false);
     }
   }, []);
 
-  const verifyToken = async (token: string) => {
+  const verifyToken = async () => {
     try {
       const response = await authApi.get<{ user: User }>('/me');
       if (response.success && response.data) {
