@@ -24,7 +24,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/enroll/health").permitAll()
-                .anyRequest().authenticated()
+                .anyRequest().permitAll() // Allow all for now to test
             );
 
         return http.build();
