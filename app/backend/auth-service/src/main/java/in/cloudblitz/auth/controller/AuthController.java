@@ -4,6 +4,7 @@ import in.cloudblitz.auth.dto.ApiResponse;
 import in.cloudblitz.auth.dto.AuthResponse;
 import in.cloudblitz.auth.dto.LoginRequest;
 import in.cloudblitz.auth.dto.RegisterRequest;
+import in.cloudblitz.auth.dto.UserDto;
 import in.cloudblitz.auth.service.AuthService;
 import in.cloudblitz.auth.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,7 +45,7 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<AuthResponse.UserDto>> getCurrentUser(HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<UserDto>> getCurrentUser(HttpServletRequest request) {
         try {
             String token = extractTokenFromRequest(request);
             if (token == null) {
@@ -56,7 +57,7 @@ public class AuthController {
                 return ResponseEntity.badRequest().body(ApiResponse.error("Invalid token"));
             }
 
-            AuthResponse.UserDto user = authService.getCurrentUser(email);
+            UserDto user = authService.getCurrentUser(email);
             return ResponseEntity.ok(ApiResponse.success(user));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));

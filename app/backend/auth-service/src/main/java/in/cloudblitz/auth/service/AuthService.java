@@ -3,6 +3,7 @@ package in.cloudblitz.auth.service;
 import in.cloudblitz.auth.dto.AuthResponse;
 import in.cloudblitz.auth.dto.LoginRequest;
 import in.cloudblitz.auth.dto.RegisterRequest;
+import in.cloudblitz.auth.dto.UserDto;
 import in.cloudblitz.auth.entity.User;
 import in.cloudblitz.auth.repository.UserRepository;
 import in.cloudblitz.auth.util.JwtUtil;
@@ -30,7 +31,7 @@ public class AuthService {
         user = userRepository.save(user);
 
         String token = jwtUtil.generateToken(user.getId(), user.getEmail());
-        return new AuthResponse(token, new AuthResponse.UserDto(user.getId(), user.getName(), user.getEmail()));
+        return new AuthResponse(token, new UserDto(user.getId(), user.getName(), user.getEmail()));
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -42,12 +43,12 @@ public class AuthService {
         }
 
         String token = jwtUtil.generateToken(user.getId(), user.getEmail());
-        return new AuthResponse(token, new AuthResponse.UserDto(user.getId(), user.getName(), user.getEmail()));
+        return new AuthResponse(token, new UserDto(user.getId(), user.getName(), user.getEmail()));
     }
 
-    public AuthResponse.UserDto getCurrentUser(String email) {
+    public UserDto getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return new AuthResponse.UserDto(user.getId(), user.getName(), user.getEmail());
+        return new UserDto(user.getId(), user.getName(), user.getEmail());
     }
 }
