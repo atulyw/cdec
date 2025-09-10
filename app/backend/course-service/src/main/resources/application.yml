@@ -1,0 +1,13 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: course-service
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://localhost:27017/cb_courses}
+
+logging:
+  level:
+    in.cloudblitz.course: DEBUG

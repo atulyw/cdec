@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongo:
+    image: mongo:7
+    container_name: cloudblitz-mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - cloudblitz-network
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./backend/auth-service
+      dockerfile: Dockerfile
+    container_name: cloudblitz-auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      MONGO_URI: mongodb://mongo:27017/cb_auth
+      JWT_SECRET: mySecretKey
+      SERVER_PORT: 8081
+    depends_on:
+      - mongo
+    networks:
+      - cloudblitz-network
+
+  # Course Service
+  course-service:
+    build:
+      context: ./backend/course-service
+      dockerfile: Dockerfile
+    container_name: cloudblitz-course-service
+    ports:
+      - "8082:8082"
+    environment:
+      MONGO_URI: mongodb://mongo:27017/cb_courses
+      SERVER_PORT: 8082
+    depends_on:
+      - mongo
+    networks:
+      - cloudblitz-network
+
+  # Enrollment Service
+  enrollment-service:
+    build:
+      context: ./backend/enrollment-service
+      dockerfile: Dockerfile
+    container_name: cloudblitz-enrollment-service
+    ports:
+      - "8083:8083"
+    environment:
+      MONGO_URI: mongodb://mongo:27017/cb_enrollments
+      JWT_SECRET: mySecretKey
+      SERVER_PORT: 8083
+    depends_on:
+      - mongo
+    networks:
+      - cloudblitz-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cloudblitz-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_AUTH_API: https://api.cloudblitz.in/api/auth
+      VITE_COURSE_API: https://api.cloudblitz.in/api/courses
+      VITE_ENROLL_API: https://api.cloudblitz.in/api/enroll
+    depends_on:
+      - auth-service
+      - course-service
+      - enrollment-service
+    networks:
+      - cloudblitz-network
+
+volumes:
+  mongo_data:
+
+networks:
+  cloudblitz-network:
+    driver: bridge

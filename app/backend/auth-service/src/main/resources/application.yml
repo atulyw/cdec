@@ -1,0 +1,21 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: auth-service
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://localhost:27017/cb_auth}
+  security:
+    user:
+      name: admin
+      password: admin
+
+jwt:
+  secret: ${JWT_SECRET:mySecretKey}
+  expiration: 86400000 # 24 hours
+
+logging:
+  level:
+    in.cloudblitz.auth: DEBUG

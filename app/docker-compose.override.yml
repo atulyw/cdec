@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  # Override frontend environment for local development
+  frontend:
+    environment:
+      VITE_AUTH_API: http://localhost:8081/api/auth
+      VITE_COURSE_API: http://localhost:8082/api/courses
+      VITE_ENROLL_API: http://localhost:8083/api/enroll

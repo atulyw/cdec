@@ -1,0 +1,16 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: enrollment-service
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://localhost:27017/cb_enrollments}
+
+jwt:
+  secret: ${JWT_SECRET:mySecretKey}
+
+logging:
+  level:
+    in.cloudblitz.enrollment: DEBUG

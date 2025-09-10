@@ -1,0 +1,39 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "CloudBlitz Student App - A minimal mono-repo with React frontend and Spring Boot microservices",
+  "scripts": {
+    "dev": "docker-compose up --build",
+    "start": "docker-compose up",
+    "stop": "docker-compose down",
+    "build": "docker-compose build",
+    "logs": "docker-compose logs -f",
+    "clean": "docker-compose down -v --remove-orphans && docker system prune -f",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:install": "cd frontend && npm install",
+    "backend:build": "cd backend/auth-service && ./mvnw clean package && cd ../course-service && ./mvnw clean package && cd ../enrollment-service && ./mvnw clean package",
+    "test": "cd frontend && npm test && cd ../backend/auth-service && ./mvnw test && cd ../course-service && ./mvnw test && cd ../enrollment-service && ./mvnw test",
+    "health": "curl -s http://localhost:8081/api/auth/health && curl -s http://localhost:8082/api/courses/health && curl -s http://localhost:8083/api/enroll/health"
+  },
+  "keywords": [
+    "react",
+    "spring-boot",
+    "microservices",
+    "mongodb",
+    "jwt",
+    "docker",
+    "typescript",
+    "tailwind"
+  ],
+  "author": "CloudBlitz Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cloudblitz/app.git"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
