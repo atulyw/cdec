@@ -26,10 +26,10 @@ public class DataSeeder implements CommandLineRunner {
             User adminUser = new User(
                 "Ramesh Admin",
                 "ramesh@admin.com",
-                passwordEncoder.encode("admin123")
+                passwordEncoder.encode("ramesh@admin")
             );
             userRepository.save(adminUser);
-            System.out.println("Created default admin user: ramesh@admin.com");
+            System.out.println("Created default admin user: ramesh@admin.com with password: ramesh@admin");
         }
 
         // Create a test user if it doesn't exist
