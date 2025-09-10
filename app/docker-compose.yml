@@ -22,7 +22,7 @@ services:
     ports:
       - "8081:8081"
     environment:
-      MONGO_URI: mongodb://mongo:27017/cb_auth
+      MONGO_URI: mongodb://admin:password@mongo:27017/cb_auth?authSource=admin
       JWT_SECRET: mySecretKey
       SERVER_PORT: 8081
     depends_on:
@@ -39,7 +39,7 @@ services:
     ports:
       - "8082:8082"
     environment:
-      MONGO_URI: mongodb://mongo:27017/cb_courses
+      MONGO_URI: mongodb://admin:password@mongo:27017/cb_courses?authSource=admin
       SERVER_PORT: 8082
     depends_on:
       - mongo
@@ -55,7 +55,7 @@ services:
     ports:
       - "8083:8083"
     environment:
-      MONGO_URI: mongodb://mongo:27017/cb_enrollments
+      MONGO_URI: mongodb://admin:password@mongo:27017/cb_enrollments?authSource=admin
       JWT_SECRET: mySecretKey
       SERVER_PORT: 8083
     depends_on:
@@ -72,9 +72,9 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_AUTH_API: https://api.cloudblitz.in/api/auth
-      VITE_COURSE_API: https://api.cloudblitz.in/api/courses
-      VITE_ENROLL_API: https://api.cloudblitz.in/api/enroll
+      VITE_AUTH_API: http://localhost:8081/api/auth
+      VITE_COURSE_API: http://localhost:8082/api/courses
+      VITE_ENROLL_API: http://localhost:8083/api/enroll
     depends_on:
       - auth-service
       - course-service
