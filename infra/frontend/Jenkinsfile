@@ -56,7 +56,9 @@ pipeline {
         
         stage('Check Backend Dependencies') {
             when {
-                not { params.SKIP_BACKEND_CHECK }
+                not {
+                    params.SKIP_BACKEND_CHECK
+                }
             }
             steps {
                 script {
