@@ -53,12 +53,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const verifyToken = async () => {
     console.log('[AuthContext] Verifying token...');
     try {
-      const response = await authApi.get<{ user: User }>('/me');
+      const response = await authApi.get<User>('/me');
       console.log('[AuthContext] Token verification response:', response);
       
       if (response.success && response.data) {
-        console.log('[AuthContext] Token valid, setting user:', response.data.user);
-        setUser(response.data.user);
+        console.log('[AuthContext] Token valid, setting user:', response.data);
+        setUser(response.data);
         setError(null);
       } else {
         console.log('[AuthContext] Token invalid, removing from storage');
