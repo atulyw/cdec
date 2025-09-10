@@ -85,14 +85,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       console.log('[AuthContext] Login response:', response);
+      console.log('[AuthContext] Response data structure:', JSON.stringify(response.data, null, 2));
 
       if (response.success && response.data) {
-        const { token: newToken, user: userData } = response.data;
-        console.log('[AuthContext] Login successful, storing token and setting user');
-        localStorage.setItem('token', newToken);
-        setUser(userData);
-        setError(null);
-        return { success: true };
+        // Handle different response structures
+        let newToken, userData;
+        
+        if (response.data.token && response.data.user) {
+          // Standard structure: { token: "...", user: {...} }
+          newToken = response.data.token;
+          userData = response.data.user;
+        } else if (response.data.user) {
+          // Alternative structure: { user: {...} }
+          newToken = response.data.token || localStorage.getItem('token');
+          userData = response.data.user;
+        } else {
+          // Fallback: treat data as user object directly
+          newToken = localStorage.getItem('token');
+          userData = response.data;
+        }
+        
+        console.log('[AuthContext] Extracted token:', newToken);
+        console.log('[AuthContext] Extracted user:', userData);
+        
+        if (newToken && userData && typeof userData === 'object' && 'id' in userData && 'email' in userData && 'name' in userData) {
+          console.log('[AuthContext] Login successful, storing token and setting user');
+          localStorage.setItem('token', newToken);
+          setUser(userData as User);
+          setError(null);
+          return { success: true };
+        } else {
+          console.error('[AuthContext] Missing token or user data in response');
+          setError('Invalid response from server');
+          return { success: false, error: 'Invalid response from server' };
+        }
       } else {
         const errorMessage = response.error || 'Login failed';
         console.error('[AuthContext] Login failed:', errorMessage);
