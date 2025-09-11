@@ -26,7 +26,7 @@ variable "error_document" {
 variable "cloudfront_distribution_arn" {
   description = "ARN of the CloudFront distribution for bucket policy"
   type        = string
-  default     = ""
+  default     = null
 }
 
 variable "tags" {

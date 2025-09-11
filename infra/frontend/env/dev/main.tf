@@ -21,7 +21,7 @@ module "s3" {
 
   bucket_name                    = var.s3_bucket_name
   enable_versioning              = var.s3_enable_versioning
-  cloudfront_distribution_arn    = module.cloudfront.distribution_arn
+  cloudfront_distribution_arn    = var.enable_cloudfront ? module.cloudfront[0].distribution_arn : null
 
   tags = merge(
     var.tags,
@@ -33,8 +33,9 @@ module "s3" {
   )
 }
 
-# CloudFront Distribution
+# CloudFront Distribution (conditional)
 module "cloudfront" {
+  count  = var.enable_cloudfront ? 1 : 0
   source = "../../../modules/cloudfront"
 
   distribution_name                    = var.cloudfront_distribution_name

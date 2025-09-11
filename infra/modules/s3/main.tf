@@ -44,8 +44,9 @@ resource "aws_s3_bucket_website_configuration" "website" {
   }
 }
 
-# S3 Bucket Policy for CloudFront Access
+# S3 Bucket Policy for CloudFront Access (conditional)
 resource "aws_s3_bucket_policy" "website" {
+  count  = var.cloudfront_distribution_arn != null ? 1 : 0
   bucket = aws_s3_bucket.website.id
 
   policy = jsonencode({

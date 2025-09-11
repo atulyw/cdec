@@ -46,6 +46,12 @@ variable "cloudfront_price_class" {
   }
 }
 
+variable "enable_cloudfront" {
+  description = "Enable CloudFront distribution creation"
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "A map of tags to assign to the resources"
   type        = map(string)
