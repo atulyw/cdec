@@ -23,6 +23,12 @@ variable "error_document" {
   default     = "error.html"
 }
 
+variable "enable_cloudfront" {
+  description = "Enable CloudFront-specific bucket policy"
+  type        = bool
+  default     = false
+}
+
 variable "cloudfront_distribution_arn" {
   description = "ARN of the CloudFront distribution for bucket policy"
   type        = string

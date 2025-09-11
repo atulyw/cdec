@@ -21,6 +21,7 @@ module "s3" {
 
   bucket_name                    = var.s3_bucket_name
   enable_versioning              = var.s3_enable_versioning
+  enable_cloudfront              = var.enable_cloudfront
   cloudfront_distribution_arn    = var.enable_cloudfront ? module.cloudfront[0].distribution_arn : null
 
   tags = merge(
