@@ -41,6 +41,7 @@ pipeline {
                 script {
                     // Set the path where our Terraform files are located
                     env.WORKSPACE_PATH = "${WORKSPACE}/infra/frontend/env/${params.ENVIRONMENT}"
+                    sh 'printenv'
                 }
             }
         }
