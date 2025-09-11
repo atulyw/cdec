@@ -16,18 +16,18 @@ output "s3_website_endpoint" {
   value       = module.s3.website_endpoint
 }
 
-# CloudFront Outputs
+# CloudFront Outputs (conditional)
 output "cloudfront_distribution_id" {
   description = "ID of the CloudFront distribution"
-  value       = module.cloudfront.distribution_id
+  value       = var.enable_cloudfront ? module.cloudfront[0].distribution_id : null
 }
 
 output "cloudfront_domain_name" {
   description = "Domain name of the CloudFront distribution"
-  value       = module.cloudfront.distribution_domain_name
+  value       = var.enable_cloudfront ? module.cloudfront[0].distribution_domain_name : null
 }
 
 output "cloudfront_distribution_arn" {
   description = "ARN of the CloudFront distribution"
-  value       = module.cloudfront.distribution_arn
+  value       = var.enable_cloudfront ? module.cloudfront[0].distribution_arn : null
 }
