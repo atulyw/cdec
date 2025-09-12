@@ -1,0 +1,163 @@
+pipeline {
+    agent any
+    
+    // Environment variables - Update these with your actual values
+    environment {
+        AWS_REGION = 'us-east-1'                    // Your AWS region
+        S3_BUCKET = 'cloudblitz-frontend-bucket'    // Your S3 bucket name
+        CLOUDFRONT_DISTRIBUTION_ID = 'E1234567890ABC' // Your CloudFront distribution ID
+    }
+    
+    stages {
+        // Step 1: Get the code from Git repository
+        stage('Get Code') {
+            steps {
+                echo '📥 Getting code from Git repository...'
+                checkout scm
+            }
+        }
+        
+        // Step 2: Install Node.js and npm
+        stage('Setup Node.js') {
+            steps {
+                echo '🔧 Setting up Node.js...'
+                sh '''
+                    # Download and install Node.js version 20
+                    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+                    sudo apt-get install -y nodejs
+                    
+                    # Show versions to confirm installation
+                    echo "Node.js version:"
+                    node --version
+                    echo "npm version:"
+                    npm --version
+                '''
+            }
+        }
+        
+        // Step 3: Install project dependencies
+        stage('Install Dependencies') {
+            steps {
+                echo '📦 Installing project dependencies...'
+                sh '''
+                    cd frontend
+                    npm install
+                    echo "Dependencies installed successfully!"
+                '''
+            }
+        }
+        
+        // Step 4: Build the React application
+        stage('Build Application') {
+            steps {
+                echo '🏗️ Building the React application...'
+                sh '''
+                    cd frontend
+                    npm run build
+                    
+                    # Check if build folder was created
+                    if [ -d "dist" ]; then
+                        echo "✅ Build successful!"
+                        echo "Files in dist folder:"
+                        ls -la dist/
+                    else
+                        echo "❌ Build failed - no dist folder found"
+                        exit 1
+                    fi
+                '''
+            }
+        }
+        
+        // Step 5: Upload files to S3 bucket
+        stage('Upload to S3') {
+            steps {
+                echo '☁️ Uploading files to S3 bucket...'
+                sh '''
+                    cd frontend
+                    
+                    # Install AWS CLI if needed
+                    if ! command -v aws &> /dev/null; then
+                        echo "Installing AWS CLI..."
+                        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                        unzip awscliv2.zip
+                        sudo ./aws/install
+                    fi
+                    
+                    # Upload all files from dist folder to S3
+                    echo "Uploading files to s3://${S3_BUCKET}/"
+                    aws s3 sync dist/ s3://${S3_BUCKET}/ --delete
+                    
+                    echo "✅ Files uploaded to S3 successfully!"
+                '''
+            }
+        }
+        
+        // Step 6: Clear CloudFront cache
+        stage('Clear CloudFront Cache') {
+            steps {
+                echo '🔄 Clearing CloudFront cache...'
+                sh '''
+                    # Create cache invalidation
+                    echo "Creating CloudFront invalidation..."
+                    aws cloudfront create-invalidation \
+                        --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} \
+                        --paths "/*"
+                    
+                    echo "✅ CloudFront cache invalidation created!"
+                    echo "Note: It may take 5-15 minutes for changes to appear on the website"
+                '''
+            }
+        }
+        
+        // Step 7: Check if deployment worked
+        stage('Check Deployment') {
+            steps {
+                echo '🔍 Checking if deployment was successful...'
+                sh '''
+                    # Wait a bit for CloudFront to start processing
+                    echo "Waiting 30 seconds for CloudFront to process..."
+                    sleep 30
+                    
+                    # Try to access the website
+                    echo "Checking if website is accessible..."
+                    if curl -f -s https://cloudblitz.in > /dev/null; then
+                        echo "✅ SUCCESS: Website is accessible at https://cloudblitz.in"
+                    else
+                        echo "⚠️  Website not accessible yet (this is normal - CloudFront takes time)"
+                        echo "Please wait 5-15 minutes and check https://cloudblitz.in manually"
+                    fi
+                '''
+            }
+        }
+    }
+    
+    // What to do after the pipeline finishes
+    post {
+        always {
+            echo '🧹 Cleaning up workspace...'
+            cleanWs()
+        }
+        success {
+            echo ''
+            echo '🎉🎉🎉 DEPLOYMENT SUCCESSFUL! 🎉🎉🎉'
+            echo ''
+            echo 'Your website should be available at:'
+            echo '🌐 https://cloudblitz.in'
+            echo ''
+            echo 'If you don\'t see changes immediately, wait 5-15 minutes'
+            echo 'for CloudFront to update the cache.'
+        }
+        failure {
+            echo ''
+            echo '❌❌❌ DEPLOYMENT FAILED! ❌❌❌'
+            echo ''
+            echo 'Please check the error messages above.'
+            echo 'Common issues:'
+            echo '1. Wrong S3 bucket name'
+            echo '2. Wrong CloudFront distribution ID'
+            echo '3. AWS credentials not configured'
+            echo '4. Build errors in the React app'
+        }
+    }
+}
+

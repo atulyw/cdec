@@ -1,0 +1,132 @@
+pipeline {
+    agent any
+    
+    environment {
+        AWS_REGION = 'us-east-1'
+        S3_BUCKET = 'cloudblitz-frontend-bucket'
+        CLOUDFRONT_DISTRIBUTION_ID = 'E1234567890ABC'
+        NODE_VERSION = '20'
+    }
+    
+    stages {
+        stage('Checkout Code') {
+            steps {
+                echo 'Getting the latest code from repository...'
+                checkout scm
+            }
+        }
+        
+        stage('Setup Node.js') {
+            steps {
+                echo 'Setting up Node.js environment...'
+                sh '''
+                    # Install Node.js
+                    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+                    sudo apt-get install -y nodejs
+                    
+                    # Verify installation
+                    node --version
+                    npm --version
+                '''
+            }
+        }
+        
+        stage('Install Dependencies') {
+            steps {
+                echo 'Installing frontend dependencies...'
+                sh '''
+                    cd frontend
+                    npm install
+                '''
+            }
+        }
+        
+        stage('Build Frontend') {
+            steps {
+                echo 'Building the React application...'
+                sh '''
+                    cd frontend
+                    npm run build
+                    
+                    # Check if build was successful
+                    if [ -d "dist" ]; then
+                        echo "Build successful! Files created in dist folder"
+                        ls -la dist/
+                    else
+                        echo "Build failed! No dist folder found"
+                        exit 1
+                    fi
+                '''
+            }
+        }
+        
+        stage('Upload to S3') {
+            steps {
+                echo 'Uploading files to S3 bucket...'
+                sh '''
+                    cd frontend
+                    
+                    # Install AWS CLI if not present
+                    if ! command -v aws &> /dev/null; then
+                        echo "Installing AWS CLI..."
+                        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                        unzip awscliv2.zip
+                        sudo ./aws/install
+                    fi
+                    
+                    # Upload all files to S3
+                    aws s3 sync dist/ s3://${S3_BUCKET}/ --delete
+                    
+                    echo "Files uploaded to S3 successfully!"
+                '''
+            }
+        }
+        
+        stage('Invalidate CloudFront Cache') {
+            steps {
+                echo 'Clearing CloudFront cache...'
+                sh '''
+                    # Create invalidation for all files
+                    aws cloudfront create-invalidation \
+                        --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} \
+                        --paths "/*"
+                    
+                    echo "CloudFront cache invalidation created!"
+                '''
+            }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                echo 'Checking if deployment was successful...'
+                sh '''
+                    # Wait a moment for CloudFront to process
+                    sleep 30
+                    
+                    # Check if the main page loads
+                    if curl -f -s https://cloudblitz.in > /dev/null; then
+                        echo "✅ Frontend is accessible at https://cloudblitz.in"
+                    else
+                        echo "❌ Frontend is not accessible yet"
+                        echo "This might be normal - CloudFront can take a few minutes to update"
+                    fi
+                '''
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Cleaning up workspace...'
+            cleanWs()
+        }
+        success {
+            echo '🎉 Frontend deployment successful!'
+            echo 'Your website should be available at: https://cloudblitz.in'
+        }
+        failure {
+            echo '❌ Frontend deployment failed!'
+            echo 'Check the logs above for error details'
+        }
+    }
+}
