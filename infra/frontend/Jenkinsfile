@@ -66,9 +66,9 @@ pipeline {
                             cat > backend.tf << 'EOF'
 terraform {
   backend "s3" {
-    bucket         = "terraform-state-bucket-cdec"
-    key            = "frontend/dev/terraform-v2.tfstate"
-    region         = "eu-west-1"
+    bucket         = "terraform-state-bucket-cdec-proj"
+    key            = "frontend/dev/terraform-v3.tfstate"
+    region         = "eu-north-1"
     encrypt        = true
     dynamodb_table = "terraform-state-lock"
     use_lockfile   = true
