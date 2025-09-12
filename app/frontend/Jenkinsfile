@@ -35,7 +35,6 @@ pipeline {
             steps {
                 echo 'Installing frontend dependencies...'
                 sh '''
-                    cd frontend
                     npm install
                 '''
             }
@@ -45,7 +44,6 @@ pipeline {
             steps {
                 echo 'Building the React application...'
                 sh '''
-                    cd frontend
                     npm run build
                     
                     # Check if build was successful
@@ -64,7 +62,6 @@ pipeline {
             steps {
                 echo 'Uploading files to S3 bucket...'
                 sh '''
-                    cd frontend
                     
                     # Install AWS CLI if not present
                     if ! command -v aws &> /dev/null; then
