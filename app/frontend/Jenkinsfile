@@ -1,10 +1,10 @@
 pipeline {
-    agent any
+    agent { label 'ecs-agent' }
     
     environment {
-        AWS_REGION = 'us-east-1'
-        S3_BUCKET = 'cloudblitz-frontend-bucket'
-        CLOUDFRONT_DISTRIBUTION_ID = 'E1234567890ABC'
+        AWS_REGION = 'eu-west-1'
+        S3_BUCKET = 'frontend-dev-website-cdec41'
+        CLOUDFRONT_DISTRIBUTION_ID = 'EDXT3KF2CP81O'
         NODE_VERSION = '20'
     }
     
