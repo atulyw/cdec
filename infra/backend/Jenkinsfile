@@ -15,6 +15,11 @@ pipeline {
             choices: ['dev', 'stage', 'prod'],
             description: 'Which environment to deploy to (dev, stage, or prod)'
         )
+        choice(
+            name: 'ACTION',
+            choices: ['create', 'delete'],
+            description: 'Choose action: create infrastructure or delete infrastructure'
+        )
         booleanParam(
             name: 'AUTO_APPROVE',
             defaultValue: false,
@@ -81,16 +86,24 @@ EOF
             }
         }
         
-        // Step 3: Plan what infrastructure will be created
+        // Step 3: Plan what infrastructure will be created or destroyed
         stage('Plan Infrastructure') {
             steps {
                 script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
-                        sh """
-                            cd ${env.WORKSPACE_PATH}
-                            # Create a plan file showing what will be created/changed
-                            terraform plan -out=tfplan-${params.ENVIRONMENT}.out
-                        """
+                        if (params.ACTION == 'delete') {
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+                                # Create a destroy plan file showing what will be deleted
+                                terraform plan -destroy -out=tfplan-${params.ENVIRONMENT}.out
+                            """
+                        } else {
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+                                # Create a plan file showing what will be created/changed
+                                terraform plan -out=tfplan-${params.ENVIRONMENT}.out
+                            """
+                        }
                     }
                 }
             }
@@ -102,52 +115,82 @@ EOF
             }
         }
         
-        // Step 4: Create the infrastructure
-        stage('Create Infrastructure') {
+        // Step 4: Create or Delete the infrastructure
+        stage('Apply Infrastructure Changes') {
             steps {
                 script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
-                        if (params.AUTO_APPROVE) {
-                            // If auto-approve is enabled, apply changes without asking
-                            sh """
-                                cd ${env.WORKSPACE_PATH}
-                                terraform apply -auto-approve tfplan-${params.ENVIRONMENT}.out
-                            """
+                        if (params.ACTION == 'delete') {
+                            if (params.AUTO_APPROVE) {
+                                // If auto-approve is enabled, destroy without asking
+                                sh """
+                                    cd ${env.WORKSPACE_PATH}
+                                    terraform apply -auto-approve tfplan-${params.ENVIRONMENT}.out
+                                """
+                            } else {
+                                // Ask for manual approval before destroying infrastructure
+                                input message: "⚠️ DANGER: Ready to DELETE backend infrastructure for ${params.ENVIRONMENT}? This action cannot be undone!", ok: 'Yes, Delete'
+                                sh """
+                                    cd ${env.WORKSPACE_PATH}
+                                    terraform apply tfplan-${params.ENVIRONMENT}.out
+                                """
+                            }
                         } else {
-                            // Ask for manual approval before creating infrastructure
-                            input message: "Ready to create backend infrastructure for ${params.ENVIRONMENT}?", ok: 'Yes, Create'
-                            sh """
-                                cd ${env.WORKSPACE_PATH}
-                                terraform apply tfplan-${params.ENVIRONMENT}.out
-                            """
+                            if (params.AUTO_APPROVE) {
+                                // If auto-approve is enabled, apply changes without asking
+                                sh """
+                                    cd ${env.WORKSPACE_PATH}
+                                    terraform apply -auto-approve tfplan-${params.ENVIRONMENT}.out
+                                """
+                            } else {
+                                // Ask for manual approval before creating infrastructure
+                                input message: "Ready to create backend infrastructure for ${params.ENVIRONMENT}?", ok: 'Yes, Create'
+                                sh """
+                                    cd ${env.WORKSPACE_PATH}
+                                    terraform apply tfplan-${params.ENVIRONMENT}.out
+                                """
+                            }
                         }
                     }
                 }
             }
         }
         
-        // Step 5: Show what was created
+        // Step 5: Show results
         stage('Show Results') {
             steps {
                 script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
-                        sh """
-                            cd ${env.WORKSPACE_PATH}
-                            echo "=== Backend Infrastructure Created Successfully ==="
-                            # Show all the outputs from Terraform (like cluster names, URLs, etc.)
-                            terraform output
-                            # Also save outputs to a JSON file
-                            terraform output -json > terraform-outputs.json
-                        """
+                        if (params.ACTION == 'delete') {
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+                                echo "=== Backend Infrastructure Deleted Successfully ==="
+                                echo "All backend resources for ${params.ENVIRONMENT} environment have been destroyed."
+                            """
+                        } else {
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+                                echo "=== Backend Infrastructure Created Successfully ==="
+                                # Show all the outputs from Terraform (like cluster names, URLs, etc.)
+                                terraform output
+                                # Also save outputs to a JSON file
+                                terraform output -json > terraform-outputs.json
+                            """
+                        }
                     }
                 }
-                // Save the outputs file as an artifact
-                archiveArtifacts artifacts: "infra/backend/env/dev/terraform-outputs.json", fingerprint: true
+                // Save the outputs file as an artifact (only for create action)
+                if (params.ACTION == 'create') {
+                    archiveArtifacts artifacts: "infra/backend/env/dev/terraform-outputs.json", fingerprint: true
+                }
             }
         }
         
-        // Step 6: Verify the EKS cluster is working
+        // Step 6: Verify the EKS cluster is working (only for create action)
         stage('Verify EKS Cluster') {
+            when {
+                expression { params.ACTION == 'create' }
+            }
             steps {
                 script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
@@ -184,14 +227,26 @@ EOF
             }
         }
         success {
-            echo "✅ Backend infrastructure created successfully for ${params.ENVIRONMENT}!"
+            if (params.ACTION == 'delete') {
+                echo "✅ Backend infrastructure deleted successfully for ${params.ENVIRONMENT}!"
+            } else {
+                echo "✅ Backend infrastructure created successfully for ${params.ENVIRONMENT}!"
+            }
         }
         failure {
-            echo "❌ Backend infrastructure creation failed for ${params.ENVIRONMENT}"
+            if (params.ACTION == 'delete') {
+                echo "❌ Backend infrastructure deletion failed for ${params.ENVIRONMENT}"
+            } else {
+                echo "❌ Backend infrastructure creation failed for ${params.ENVIRONMENT}"
+            }
             echo "Check the build logs for more details: ${env.BUILD_URL}"
         }
         unstable {
-            echo "⚠️ Backend infrastructure creation completed with warnings for ${params.ENVIRONMENT}"
+            if (params.ACTION == 'delete') {
+                echo "⚠️ Backend infrastructure deletion completed with warnings for ${params.ENVIRONMENT}"
+            } else {
+                echo "⚠️ Backend infrastructure creation completed with warnings for ${params.ENVIRONMENT}"
+            }
         }
     }
 }

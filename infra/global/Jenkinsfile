@@ -9,6 +9,11 @@ pipeline {
             choices: ['dev', 'stage', 'prod'],
             description: 'Target environment for deployment'
         )
+        choice(
+            name: 'ACTION',
+            choices: ['create', 'delete'],
+            description: 'Choose action: create infrastructure or delete infrastructure'
+        )
         booleanParam(
             name: 'AUTO_APPROVE',
             defaultValue: false,
@@ -90,10 +95,19 @@ EOF
             steps {
                 script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
-                        sh """
-                            cd ${env.WORKSPACE_PATH}
-                            terraform plan -out=tfplan-${params.ENVIRONMENT}.out
-                        """
+                        if (params.ACTION == 'delete') {
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+                                # Create a destroy plan file showing what will be deleted
+                                terraform plan -destroy -out=tfplan-${params.ENVIRONMENT}.out
+                            """
+                        } else {
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+                                # Create a plan file showing what will be created/changed
+                                terraform plan -out=tfplan-${params.ENVIRONMENT}.out
+                            """
+                        }
                     }
                 }
             }
@@ -108,17 +122,32 @@ EOF
             steps {
                 script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
-                        if (params.AUTO_APPROVE) {
-                            sh """
-                                cd ${env.WORKSPACE_PATH}
-                                terraform apply -auto-approve tfplan-${params.ENVIRONMENT}.out
-                            """
+                        if (params.ACTION == 'delete') {
+                            if (params.AUTO_APPROVE) {
+                                sh """
+                                    cd ${env.WORKSPACE_PATH}
+                                    terraform apply -auto-approve tfplan-${params.ENVIRONMENT}.out
+                                """
+                            } else {
+                                input message: "⚠️ DANGER: Ready to DELETE global infrastructure for ${params.ENVIRONMENT}? This action cannot be undone!", ok: 'Yes, Delete'
+                                sh """
+                                    cd ${env.WORKSPACE_PATH}
+                                    terraform apply tfplan-${params.ENVIRONMENT}.out
+                                """
+                            }
                         } else {
-                            input message: "Apply Terraform changes for ${params.ENVIRONMENT} environment?", ok: 'Apply'
-                            sh """
-                                cd ${env.WORKSPACE_PATH}
-                                terraform apply tfplan-${params.ENVIRONMENT}.out
-                            """
+                            if (params.AUTO_APPROVE) {
+                                sh """
+                                    cd ${env.WORKSPACE_PATH}
+                                    terraform apply -auto-approve tfplan-${params.ENVIRONMENT}.out
+                                """
+                            } else {
+                                input message: "Apply Terraform changes for ${params.ENVIRONMENT} environment?", ok: 'Apply'
+                                sh """
+                                    cd ${env.WORKSPACE_PATH}
+                                    terraform apply tfplan-${params.ENVIRONMENT}.out
+                                """
+                            }
                         }
                     }
                 }
@@ -129,13 +158,28 @@ EOF
             steps {
                 script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
-                        sh """
-                            cd ${env.WORKSPACE_PATH}
-                            terraform output -json > terraform-outputs.json
-                        """
+                        if (params.ACTION == 'delete') {
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+                                echo "=== Global Infrastructure Deleted Successfully ==="
+                                echo "All global resources for ${params.ENVIRONMENT} environment have been destroyed."
+                            """
+                        } else {
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+                                echo "=== Global Infrastructure Created Successfully ==="
+                                # Show all the outputs from Terraform
+                                terraform output
+                                # Also save outputs to a JSON file
+                                terraform output -json > terraform-outputs.json
+                            """
+                        }
                     }
                 }
-                archiveArtifacts artifacts: "infra/global/env/dev/terraform-outputs.json", fingerprint: true
+                // Save the outputs file as an artifact (only for create action)
+                if (params.ACTION == 'create') {
+                    archiveArtifacts artifacts: "infra/global/env/dev/terraform-outputs.json", fingerprint: true
+                }
             }
         }
     }
@@ -150,14 +194,26 @@ EOF
             }
         }
         success {
-            echo "Global infrastructure deployment to ${params.ENVIRONMENT} completed successfully"
+            if (params.ACTION == 'delete') {
+                echo "✅ Global infrastructure deleted successfully for ${params.ENVIRONMENT}!"
+            } else {
+                echo "✅ Global infrastructure created successfully for ${params.ENVIRONMENT}!"
+            }
         }
         failure {
-            echo "Global infrastructure deployment to ${params.ENVIRONMENT} failed"
-            echo "Build ${env.BUILD_URL} failed for environment ${params.ENVIRONMENT}"
+            if (params.ACTION == 'delete') {
+                echo "❌ Global infrastructure deletion failed for ${params.ENVIRONMENT}"
+            } else {
+                echo "❌ Global infrastructure creation failed for ${params.ENVIRONMENT}"
+            }
+            echo "Check the build logs for more details: ${env.BUILD_URL}"
         }
         unstable {
-            echo "Global infrastructure deployment to ${params.ENVIRONMENT} completed with warnings"
+            if (params.ACTION == 'delete') {
+                echo "⚠️ Global infrastructure deletion completed with warnings for ${params.ENVIRONMENT}"
+            } else {
+                echo "⚠️ Global infrastructure creation completed with warnings for ${params.ENVIRONMENT}"
+            }
         }
     }
 }
