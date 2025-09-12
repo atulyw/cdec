@@ -177,8 +177,10 @@ EOF
                     }
                 }
                 // Save the outputs file as an artifact (only for create action)
-                if (params.ACTION == 'create') {
-                    archiveArtifacts artifacts: "infra/global/env/dev/terraform-outputs.json", fingerprint: true
+                script {
+                    if (params.ACTION == 'create') {
+                        archiveArtifacts artifacts: "infra/global/env/dev/terraform-outputs.json", fingerprint: true
+                    }
                 }
             }
         }
@@ -194,25 +196,31 @@ EOF
             }
         }
         success {
-            if (params.ACTION == 'delete') {
-                echo "✅ Global infrastructure deleted successfully for ${params.ENVIRONMENT}!"
-            } else {
-                echo "✅ Global infrastructure created successfully for ${params.ENVIRONMENT}!"
+            script {
+                if (params.ACTION == 'delete') {
+                    echo "✅ Global infrastructure deleted successfully for ${params.ENVIRONMENT}!"
+                } else {
+                    echo "✅ Global infrastructure created successfully for ${params.ENVIRONMENT}!"
+                }
             }
         }
         failure {
-            if (params.ACTION == 'delete') {
-                echo "❌ Global infrastructure deletion failed for ${params.ENVIRONMENT}"
-            } else {
-                echo "❌ Global infrastructure creation failed for ${params.ENVIRONMENT}"
+            script {
+                if (params.ACTION == 'delete') {
+                    echo "❌ Global infrastructure deletion failed for ${params.ENVIRONMENT}"
+                } else {
+                    echo "❌ Global infrastructure creation failed for ${params.ENVIRONMENT}"
+                }
             }
             echo "Check the build logs for more details: ${env.BUILD_URL}"
         }
         unstable {
-            if (params.ACTION == 'delete') {
-                echo "⚠️ Global infrastructure deletion completed with warnings for ${params.ENVIRONMENT}"
-            } else {
-                echo "⚠️ Global infrastructure creation completed with warnings for ${params.ENVIRONMENT}"
+            script {
+                if (params.ACTION == 'delete') {
+                    echo "⚠️ Global infrastructure deletion completed with warnings for ${params.ENVIRONMENT}"
+                } else {
+                    echo "⚠️ Global infrastructure creation completed with warnings for ${params.ENVIRONMENT}"
+                }
             }
         }
     }
