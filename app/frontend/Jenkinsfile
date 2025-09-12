@@ -13,6 +13,11 @@ pipeline {
             steps {
                 echo 'Getting the latest code from repository...'
                 checkout scm
+                script {
+                    // Set the path where our Terraform files are located
+                    env.WORKSPACE_PATH = "${WORKSPACE}/app/frontend"
+                    sh 'printenv'
+                }
             }
         }
         
