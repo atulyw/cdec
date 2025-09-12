@@ -16,20 +16,20 @@ pipeline {
             }
         }
         
-        stage('Setup Node.js') {
-            steps {
-                echo 'Setting up Node.js environment...'
-                sh '''
-                    # Install Node.js
-                    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-                    sudo apt-get install -y nodejs
+        // stage('Setup Node.js') {
+        //     steps {
+        //         echo 'Setting up Node.js environment...'
+        //         sh '''
+        //             # Install Node.js
+        //             curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        //             sudo apt-get install -y nodejs
                     
-                    # Verify installation
-                    node --version
-                    npm --version
-                '''
-            }
-        }
+        //             # Verify installation
+        //             node --version
+        //             npm --version
+        //         '''
+        //     }
+        // }
         
         stage('Install Dependencies') {
             steps {
