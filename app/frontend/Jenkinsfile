@@ -121,7 +121,7 @@ pipeline {
     post {
         always {
             echo 'Cleaning up workspace...'
-            cleanWs()
+            deleteDir()
         }
         success {
             echo '🎉 Frontend deployment successful!'
