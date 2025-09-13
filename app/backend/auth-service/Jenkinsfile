@@ -3,10 +3,6 @@ pipeline {
         label 'ecs-agent'
     }
     
-    tools {
-        jdk 'JDK-17'
-    }
-    
     environment {
         AWS_REGION = 'us-east-1'
         EKS_CLUSTER_NAME = 'cloudblitz-cluster'
@@ -20,6 +16,28 @@ pipeline {
             steps {
                 echo 'Checking out source code...'
                 checkout scm
+            }
+        }
+        
+        stage('Setup Java') {
+            steps {
+                echo 'Checking Java environment...'
+                sh '''
+                    # Check available Java versions
+                    echo "Available Java versions:"
+                    java -version 2>&1 || echo "Java not found"
+                    
+                    # Set JAVA_HOME if not set
+                    if [ -z "$JAVA_HOME" ]; then
+                        if command -v java >/dev/null 2>&1; then
+                            export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
+                            echo "Set JAVA_HOME to: $JAVA_HOME"
+                        fi
+                    fi
+                    
+                    echo "JAVA_HOME: $JAVA_HOME"
+                    java -version
+                '''
             }
         }
         
