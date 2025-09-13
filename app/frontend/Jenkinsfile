@@ -14,7 +14,7 @@ pipeline {
                 echo 'Getting the latest code from repository...'
                 checkout scm
                 script {
-                    // Set the path where our Terraform files are located
+                    // Set the path where our frontend files are located
                     env.WORKSPACE_PATH = "${WORKSPACE}/app/frontend"
                     sh 'printenv'
                 }
@@ -36,83 +36,85 @@ pipeline {
         //     }
         // }
         
-        stage('Install Dependencies') {
-            steps {
-                echo 'Installing frontend dependencies...'
-                sh '''
-                    npm install
-                '''
+        // All frontend stages run in the app/frontend directory
+        dir('app/frontend') {
+            stage('Install Dependencies') {
+                steps {
+                    echo 'Installing frontend dependencies...'
+                    sh '''
+                        npm install
+                    '''
+                }
             }
-        }
-        
-        stage('Build Frontend') {
-            steps {
-                echo 'Building the React application...'
-                sh '''
-                    npm run build
-                    
-                    # Check if build was successful
-                    if [ -d "dist" ]; then
-                        echo "Build successful! Files created in dist folder"
-                        ls -la dist/
-                    else
-                        echo "Build failed! No dist folder found"
-                        exit 1
-                    fi
-                '''
+            
+            stage('Build Frontend') {
+                steps {
+                    echo 'Building the React application...'
+                    sh '''
+                        npm run build
+                        
+                        # Check if build was successful
+                        if [ -d "dist" ]; then
+                            echo "Build successful! Files created in dist folder"
+                            ls -la dist/
+                        else
+                            echo "Build failed! No dist folder found"
+                            exit 1
+                        fi
+                    '''
+                }
             }
-        }
-        
-        stage('Upload to S3') {
-            steps {
-                echo 'Uploading files to S3 bucket...'
-                sh '''
-                    
-                    # Install AWS CLI if not present
-                    if ! command -v aws &> /dev/null; then
-                        echo "Installing AWS CLI..."
-                        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                        unzip awscliv2.zip
-                        sudo ./aws/install
-                    fi
-                    
-                    # Upload all files to S3
-                    aws s3 sync dist/ s3://${S3_BUCKET}/ --delete
-                    
-                    echo "Files uploaded to S3 successfully!"
-                '''
+            
+            stage('Upload to S3') {
+                steps {
+                    echo 'Uploading files to S3 bucket...'
+                    sh '''
+                        # Install AWS CLI if not present
+                        if ! command -v aws &> /dev/null; then
+                            echo "Installing AWS CLI..."
+                            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                            unzip awscliv2.zip
+                            sudo ./aws/install
+                        fi
+                        
+                        # Upload all files to S3
+                        aws s3 sync dist/ s3://${S3_BUCKET}/ --delete
+                        
+                        echo "Files uploaded to S3 successfully!"
+                    '''
+                }
             }
-        }
-        
-        stage('Invalidate CloudFront Cache') {
-            steps {
-                echo 'Clearing CloudFront cache...'
-                sh '''
-                    # Create invalidation for all files
-                    aws cloudfront create-invalidation \
-                        --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} \
-                        --paths "/*"
-                    
-                    echo "CloudFront cache invalidation created!"
-                '''
+            
+            stage('Invalidate CloudFront Cache') {
+                steps {
+                    echo 'Clearing CloudFront cache...'
+                    sh '''
+                        # Create invalidation for all files
+                        aws cloudfront create-invalidation \
+                            --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} \
+                            --paths "/*"
+                        
+                        echo "CloudFront cache invalidation created!"
+                    '''
+                }
             }
-        }
-        
-        stage('Verify Deployment') {
-            steps {
-                echo 'Checking if deployment was successful...'
-                sh '''
-                    # Wait a moment for CloudFront to process
-                    sleep 30
-                    
-                    # Check if the main page loads
-                    if curl -f -s https://cloudblitz.in > /dev/null; then
-                        echo "✅ Frontend is accessible at https://cloudblitz.in"
-                    else
-                        echo "❌ Frontend is not accessible yet"
-                        echo "This might be normal - CloudFront can take a few minutes to update"
-                    fi
-                '''
+            
+            stage('Verify Deployment') {
+                steps {
+                    echo 'Checking if deployment was successful...'
+                    sh '''
+                        # Wait a moment for CloudFront to process
+                        sleep 30
+                        
+                        # Check if the main page loads
+                        if curl -f -s https://cloudblitz.in > /dev/null; then
+                            echo "✅ Frontend is accessible at https://cloudblitz.in"
+                        else
+                            echo "❌ Frontend is not accessible yet"
+                            echo "This might be normal - CloudFront can take a few minutes to update"
+                        fi
+                    '''
+                }
             }
         }
     }
