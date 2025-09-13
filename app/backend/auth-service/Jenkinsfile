@@ -90,7 +90,7 @@ pipeline {
             }
             post {
                 always {
-                    publishTestResults testResultsPattern: 'app/backend/auth-service/target/surefire-reports/*.xml'
+                    junit 'app/backend/auth-service/target/surefire-reports/*.xml'
                 }
             }
         }
