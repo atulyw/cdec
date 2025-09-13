@@ -71,12 +71,14 @@ pipeline {
             steps {
                 echo 'Uploading files to S3 bucket...'
                 dir('app/frontend') {
-                    sh '''
-                        # Upload all files to S3 (AWS CLI assumed to be pre-installed)
-                        aws s3 sync dist/ s3://${S3_BUCKET}/ --delete
-                        
-                        echo "Files uploaded to S3 successfully!"
-                    '''
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh '''
+                            # Upload all files to S3 (AWS CLI assumed to be pre-installed)
+                            aws s3 sync dist/ s3://${S3_BUCKET}/ --delete
+                            
+                            echo "Files uploaded to S3 successfully!"
+                        '''
+                    }
                 }
             }
         }
@@ -84,14 +86,16 @@ pipeline {
         stage('Invalidate CloudFront Cache') {
             steps {
                 echo 'Clearing CloudFront cache...'
-                sh '''
-                    # Create invalidation for all files
-                    aws cloudfront create-invalidation \
-                        --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} \
-                        --paths "/*"
-                    
-                    echo "CloudFront cache invalidation created!"
-                '''
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                    sh '''
+                        # Create invalidation for all files
+                        aws cloudfront create-invalidation \
+                            --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} \
+                            --paths "/*"
+                        
+                        echo "CloudFront cache invalidation created!"
+                    '''
+                }
             }
         }
         
