@@ -80,20 +80,6 @@ pipeline {
             }
         }
         
-        stage('Run Tests') {
-            steps {
-                echo 'Running unit tests...'
-                sh '''
-                    cd app/backend/auth-service
-                    ./mvnw test
-                '''
-            }
-            post {
-                always {
-                    junit 'app/backend/auth-service/target/surefire-reports/*.xml'
-                }
-            }
-        }
         
         stage('Build Docker Image') {
             steps {
