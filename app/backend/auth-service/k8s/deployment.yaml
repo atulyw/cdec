@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: cloudblitz
+  labels:
+    app: auth-service
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+        version: v1
+    spec:
+      containers:
+      - name: auth-service
+        image: cloudblitz/auth-service:latest
+        ports:
+        - containerPort: 8081
+        env:
+        - name: MONGO_URI
+          value: "mongodb://admin:password@mongodb-saas:27017/cb_auth?authSource=admin"
+        - name: JWT_SECRET
+          value: "CloudBlitzJWTSecretKeyForSecureAuthentication2024!@#"
+        - name: SERVER_PORT
+          value: "8081"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/auth/health
+            port: 8081
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /api/auth/health
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        imagePullPolicy: Always
+      restartPolicy: Always

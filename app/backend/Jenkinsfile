@@ -1,0 +1,245 @@
+pipeline {
+    agent any
+    
+    environment {
+        AWS_REGION = 'us-east-1'
+        EKS_CLUSTER_NAME = 'cloudblitz-cluster'
+        DOCKER_REGISTRY = 'your-docker-registry.com'
+        KUBE_NAMESPACE = 'cloudblitz'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out source code...'
+                checkout scm
+            }
+        }
+        
+        stage('Build All Services') {
+            parallel {
+                stage('Build Auth Service') {
+                    steps {
+                        echo 'Building auth-service...'
+                        sh '''
+                            cd backend/auth-service
+                            ./mvnw clean package -DskipTests
+                        '''
+                    }
+                }
+                stage('Build Course Service') {
+                    steps {
+                        echo 'Building course-service...'
+                        sh '''
+                            cd backend/course-service
+                            ./mvnw clean package -DskipTests
+                        '''
+                    }
+                }
+                stage('Build Enrollment Service') {
+                    steps {
+                        echo 'Building enrollment-service...'
+                        sh '''
+                            cd backend/enrollment-service
+                            ./mvnw clean package -DskipTests
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Test All Services') {
+            parallel {
+                stage('Test Auth Service') {
+                    steps {
+                        echo 'Testing auth-service...'
+                        sh '''
+                            cd backend/auth-service
+                            ./mvnw test
+                        '''
+                    }
+                    post {
+                        always {
+                            publishTestResults testResultsPattern: 'backend/auth-service/target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+                stage('Test Course Service') {
+                    steps {
+                        echo 'Testing course-service...'
+                        sh '''
+                            cd backend/course-service
+                            ./mvnw test
+                        '''
+                    }
+                    post {
+                        always {
+                            publishTestResults testResultsPattern: 'backend/course-service/target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+                stage('Test Enrollment Service') {
+                    steps {
+                        echo 'Testing enrollment-service...'
+                        sh '''
+                            cd backend/enrollment-service
+                            ./mvnw test
+                        '''
+                    }
+                    post {
+                        always {
+                            publishTestResults testResultsPattern: 'backend/enrollment-service/target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Build Docker Images') {
+            parallel {
+                stage('Build Auth Service Image') {
+                    steps {
+                        script {
+                            def imageTag = "${env.BUILD_NUMBER}"
+                            def fullImageName = "${DOCKER_REGISTRY}/cloudblitz/auth-service:${imageTag}"
+                            
+                            sh """
+                                cd backend/auth-service
+                                docker build -t ${fullImageName} .
+                                docker tag ${fullImageName} ${DOCKER_REGISTRY}/cloudblitz/auth-service:latest
+                            """
+                            
+                            env.AUTH_DOCKER_IMAGE = fullImageName
+                        }
+                    }
+                }
+                stage('Build Course Service Image') {
+                    steps {
+                        script {
+                            def imageTag = "${env.BUILD_NUMBER}"
+                            def fullImageName = "${DOCKER_REGISTRY}/cloudblitz/course-service:${imageTag}"
+                            
+                            sh """
+                                cd backend/course-service
+                                docker build -t ${fullImageName} .
+                                docker tag ${fullImageName} ${DOCKER_REGISTRY}/cloudblitz/course-service:latest
+                            """
+                            
+                            env.COURSE_DOCKER_IMAGE = fullImageName
+                        }
+                    }
+                }
+                stage('Build Enrollment Service Image') {
+                    steps {
+                        script {
+                            def imageTag = "${env.BUILD_NUMBER}"
+                            def fullImageName = "${DOCKER_REGISTRY}/cloudblitz/enrollment-service:${imageTag}"
+                            
+                            sh """
+                                cd backend/enrollment-service
+                                docker build -t ${fullImageName} .
+                                docker tag ${fullImageName} ${DOCKER_REGISTRY}/cloudblitz/enrollment-service:latest
+                            """
+                            
+                            env.ENROLLMENT_DOCKER_IMAGE = fullImageName
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Push Docker Images') {
+            parallel {
+                stage('Push Auth Service Image') {
+                    steps {
+                        sh """
+                            docker push ${AUTH_DOCKER_IMAGE}
+                            docker push ${DOCKER_REGISTRY}/cloudblitz/auth-service:latest
+                        """
+                    }
+                }
+                stage('Push Course Service Image') {
+                    steps {
+                        sh """
+                            docker push ${COURSE_DOCKER_IMAGE}
+                            docker push ${DOCKER_REGISTRY}/cloudblitz/course-service:latest
+                        """
+                    }
+                }
+                stage('Push Enrollment Service Image') {
+                    steps {
+                        sh """
+                            docker push ${ENROLLMENT_DOCKER_IMAGE}
+                            docker push ${DOCKER_REGISTRY}/cloudblitz/enrollment-service:latest
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to EKS') {
+            steps {
+                echo 'Deploying all services to EKS cluster...'
+                script {
+                    sh """
+                        # Configure kubectl for EKS
+                        aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+                        
+                        # Create namespace and configmap
+                        kubectl apply -f k8s/namespace.yaml
+                        kubectl apply -f k8s/configmap.yaml
+                        
+                        # Update image tags in deployments
+                        sed -i 's|image: cloudblitz/auth-service:latest|image: ${AUTH_DOCKER_IMAGE}|g' backend/auth-service/k8s/deployment.yaml
+                        sed -i 's|image: cloudblitz/course-service:latest|image: ${COURSE_DOCKER_IMAGE}|g' backend/course-service/k8s/deployment.yaml
+                        sed -i 's|image: cloudblitz/enrollment-service:latest|image: ${ENROLLMENT_DOCKER_IMAGE}|g' backend/enrollment-service/k8s/deployment.yaml
+                        
+                        # Apply all Kubernetes manifests
+                        kubectl apply -f backend/auth-service/k8s/
+                        kubectl apply -f backend/course-service/k8s/
+                        kubectl apply -f backend/enrollment-service/k8s/
+                        kubectl apply -f k8s/ingress.yaml
+                        
+                        # Wait for all deployments to be ready
+                        kubectl rollout status deployment/auth-service -n ${KUBE_NAMESPACE} --timeout=300s
+                        kubectl rollout status deployment/course-service -n ${KUBE_NAMESPACE} --timeout=300s
+                        kubectl rollout status deployment/enrollment-service -n ${KUBE_NAMESPACE} --timeout=300s
+                    """
+                }
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                echo 'Performing health checks...'
+                script {
+                    sh """
+                        # Wait for all pods to be ready
+                        kubectl wait --for=condition=ready pod -l app=auth-service -n ${KUBE_NAMESPACE} --timeout=300s
+                        kubectl wait --for=condition=ready pod -l app=course-service -n ${KUBE_NAMESPACE} --timeout=300s
+                        kubectl wait --for=condition=ready pod -l app=enrollment-service -n ${KUBE_NAMESPACE} --timeout=300s
+                        
+                        # Get service endpoints
+                        kubectl get services -n ${KUBE_NAMESPACE}
+                        kubectl get ingress -n ${KUBE_NAMESPACE}
+                        
+                        echo "All backend services deployed successfully!"
+                    """
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Cleaning up workspace...'
+            cleanWs()
+        }
+        success {
+            echo 'Backend deployment successful!'
+        }
+        failure {
+            echo 'Backend deployment failed!'
+        }
+    }
+}

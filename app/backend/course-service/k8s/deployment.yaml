@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: course-service
+  namespace: cloudblitz
+  labels:
+    app: course-service
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: course-service
+  template:
+    metadata:
+      labels:
+        app: course-service
+        version: v1
+    spec:
+      containers:
+      - name: course-service
+        image: cloudblitz/course-service:latest
+        ports:
+        - containerPort: 8082
+        env:
+        - name: MONGO_URI
+          value: "mongodb://admin:password@mongodb-saas:27017/cb_courses?authSource=admin"
+        - name: SERVER_PORT
+          value: "8082"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/courses/health
+            port: 8082
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /api/courses/health
+            port: 8082
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        imagePullPolicy: Always
+      restartPolicy: Always
+

@@ -1,0 +1,127 @@
+pipeline {
+    agent any
+    
+    environment {
+        AWS_REGION = 'us-east-1'
+        EKS_CLUSTER_NAME = 'cloudblitz-cluster'
+        DOCKER_REGISTRY = 'your-docker-registry.com'
+        IMAGE_NAME = 'cloudblitz/auth-service'
+        KUBE_NAMESPACE = 'cloudblitz'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out source code...'
+                checkout scm
+            }
+        }
+        
+        stage('Build Application') {
+            steps {
+                echo 'Building Spring Boot application...'
+                sh '''
+                    cd backend/auth-service
+                    ./mvnw clean package -DskipTests
+                '''
+            }
+        }
+        
+        stage('Run Tests') {
+            steps {
+                echo 'Running unit tests...'
+                sh '''
+                    cd backend/auth-service
+                    ./mvnw test
+                '''
+            }
+            post {
+                always {
+                    publishTestResults testResultsPattern: 'backend/auth-service/target/surefire-reports/*.xml'
+                }
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                echo 'Building Docker image...'
+                script {
+                    def imageTag = "${env.BUILD_NUMBER}"
+                    def fullImageName = "${DOCKER_REGISTRY}/${IMAGE_NAME}:${imageTag}"
+                    
+                    sh """
+                        cd backend/auth-service
+                        docker build -t ${fullImageName} .
+                        docker tag ${fullImageName} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                    """
+                    
+                    env.DOCKER_IMAGE = fullImageName
+                }
+            }
+        }
+        
+        stage('Push Docker Image') {
+            steps {
+                echo 'Pushing Docker image to registry...'
+                sh """
+                    docker push ${DOCKER_IMAGE}
+                    docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                """
+            }
+        }
+        
+        stage('Deploy to EKS') {
+            steps {
+                echo 'Deploying to EKS cluster...'
+                script {
+                    sh """
+                        # Configure kubectl for EKS
+                        aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+                        
+                        # Create namespace if it doesn't exist
+                        kubectl create namespace ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+                        
+                        # Update image tag in deployment
+                        sed -i 's|image: cloudblitz/auth-service:latest|image: ${DOCKER_IMAGE}|g' backend/auth-service/k8s/deployment.yaml
+                        
+                        # Apply Kubernetes manifests
+                        kubectl apply -f backend/auth-service/k8s/
+                        
+                        # Wait for deployment to be ready
+                        kubectl rollout status deployment/auth-service -n ${KUBE_NAMESPACE} --timeout=300s
+                    """
+                }
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                echo 'Performing health check...'
+                script {
+                    sh """
+                        # Get service endpoint
+                        kubectl get service auth-service -n ${KUBE_NAMESPACE}
+                        
+                        # Wait for pods to be ready
+                        kubectl wait --for=condition=ready pod -l app=auth-service -n ${KUBE_NAMESPACE} --timeout=300s
+                        
+                        echo "Auth service deployment completed successfully!"
+                    """
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Cleaning up workspace...'
+            cleanWs()
+        }
+        success {
+            echo 'Auth service deployment successful!'
+        }
+        failure {
+            echo 'Auth service deployment failed!'
+        }
+    }
+}
