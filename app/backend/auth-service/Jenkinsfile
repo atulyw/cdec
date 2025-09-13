@@ -3,6 +3,10 @@ pipeline {
         label 'ecs-agent'
     }
     
+    tools {
+        jdk 'JDK-17'
+    }
+    
     environment {
         AWS_REGION = 'us-east-1'
         EKS_CLUSTER_NAME = 'cloudblitz-cluster'
