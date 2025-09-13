@@ -21,18 +21,47 @@ pipeline {
         
         stage('Setup Java') {
             steps {
-                echo 'Checking Java environment...'
+                echo 'Setting up Java 17...'
                 sh '''
-                    # Check available Java versions
-                    echo "Available Java versions:"
-                    java -version 2>&1 || echo "Java not found"
-                    
-                    # Set JAVA_HOME if not set
-                    if [ -z "$JAVA_HOME" ]; then
-                        if command -v java >/dev/null 2>&1; then
+                    # Check if Java 17 is already available
+                    if command -v java >/dev/null 2>&1; then
+                        JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)
+                        echo "Current Java version: $JAVA_VERSION"
+                        
+                        if [ "$JAVA_VERSION" -ge 17 ]; then
+                            echo "Java 17+ already available"
                             export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-                            echo "Set JAVA_HOME to: $JAVA_HOME"
+                        else
+                            echo "Downloading and installing OpenJDK 17 manually..."
+                            # Download OpenJDK 17
+                            wget -O openjdk-17.tar.gz https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz
+                            
+                            # Extract to local directory
+                            mkdir -p ~/java
+                            tar -xzf openjdk-17.tar.gz -C ~/java
+                            
+                            # Set environment variables
+                            export JAVA_HOME=~/java/jdk-17.0.2
+                            export PATH=$JAVA_HOME/bin:$PATH
+                            
+                            # Clean up
+                            rm openjdk-17.tar.gz
                         fi
+                    else
+                        echo "Downloading and installing OpenJDK 17 manually..."
+                        # Download OpenJDK 17
+                        wget -O openjdk-17.tar.gz https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz
+                        
+                        # Extract to local directory
+                        mkdir -p ~/java
+                        tar -xzf openjdk-17.tar.gz -C ~/java
+                        
+                        # Set environment variables
+                        export JAVA_HOME=~/java/jdk-17.0.2
+                        export PATH=$JAVA_HOME/bin:$PATH
+                        
+                        # Clean up
+                        rm openjdk-17.tar.gz
                     fi
                     
                     echo "JAVA_HOME: $JAVA_HOME"
