@@ -36,20 +36,21 @@ pipeline {
         //     }
         // }
         
-        // All frontend stages run in the app/frontend directory
-        dir('app/frontend') {
-            stage('Install Dependencies') {
-                steps {
-                    echo 'Installing frontend dependencies...'
+        stage('Install Dependencies') {
+            steps {
+                echo 'Installing frontend dependencies...'
+                dir('app/frontend') {
                     sh '''
                         npm install
                     '''
                 }
             }
-            
-            stage('Build Frontend') {
-                steps {
-                    echo 'Building the React application...'
+        }
+        
+        stage('Build Frontend') {
+            steps {
+                echo 'Building the React application...'
+                dir('app/frontend') {
                     sh '''
                         npm run build
                         
@@ -64,10 +65,12 @@ pipeline {
                     '''
                 }
             }
-            
-            stage('Upload to S3') {
-                steps {
-                    echo 'Uploading files to S3 bucket...'
+        }
+        
+        stage('Upload to S3') {
+            steps {
+                echo 'Uploading files to S3 bucket...'
+                dir('app/frontend') {
                     sh '''
                         # Install AWS CLI if not present
                         if ! command -v aws &> /dev/null; then
@@ -84,37 +87,37 @@ pipeline {
                     '''
                 }
             }
-            
-            stage('Invalidate CloudFront Cache') {
-                steps {
-                    echo 'Clearing CloudFront cache...'
-                    sh '''
-                        # Create invalidation for all files
-                        aws cloudfront create-invalidation \
-                            --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} \
-                            --paths "/*"
-                        
-                        echo "CloudFront cache invalidation created!"
-                    '''
-                }
+        }
+        
+        stage('Invalidate CloudFront Cache') {
+            steps {
+                echo 'Clearing CloudFront cache...'
+                sh '''
+                    # Create invalidation for all files
+                    aws cloudfront create-invalidation \
+                        --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} \
+                        --paths "/*"
+                    
+                    echo "CloudFront cache invalidation created!"
+                '''
             }
-            
-            stage('Verify Deployment') {
-                steps {
-                    echo 'Checking if deployment was successful...'
-                    sh '''
-                        # Wait a moment for CloudFront to process
-                        sleep 30
-                        
-                        # Check if the main page loads
-                        if curl -f -s https://cloudblitz.in > /dev/null; then
-                            echo "✅ Frontend is accessible at https://cloudblitz.in"
-                        else
-                            echo "❌ Frontend is not accessible yet"
-                            echo "This might be normal - CloudFront can take a few minutes to update"
-                        fi
-                    '''
-                }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                echo 'Checking if deployment was successful...'
+                sh '''
+                    # Wait a moment for CloudFront to process
+                    sleep 30
+                    
+                    # Check if the main page loads
+                    if curl -f -s https://cloudblitz.in > /dev/null; then
+                        echo "✅ Frontend is accessible at https://cloudblitz.in"
+                    else
+                        echo "❌ Frontend is not accessible yet"
+                        echo "This might be normal - CloudFront can take a few minutes to update"
+                    fi
+                '''
             }
         }
     }
