@@ -24,7 +24,7 @@ pipeline {
                     steps {
                         echo 'Building auth-service...'
                         sh '''
-                            cd backend/auth-service
+                            cd app/backend/auth-service
                             ./mvnw clean package -DskipTests
                         '''
                     }
@@ -33,7 +33,7 @@ pipeline {
                     steps {
                         echo 'Building course-service...'
                         sh '''
-                            cd backend/course-service
+                            cd app/backend/course-service
                             ./mvnw clean package -DskipTests
                         '''
                     }
@@ -42,7 +42,7 @@ pipeline {
                     steps {
                         echo 'Building enrollment-service...'
                         sh '''
-                            cd backend/enrollment-service
+                            cd app/backend/enrollment-service
                             ./mvnw clean package -DskipTests
                         '''
                     }
@@ -56,13 +56,13 @@ pipeline {
                     steps {
                         echo 'Testing auth-service...'
                         sh '''
-                            cd backend/auth-service
+                            cd app/backend/auth-service
                             ./mvnw test
                         '''
                     }
                     post {
                         always {
-                            publishTestResults testResultsPattern: 'backend/auth-service/target/surefire-reports/*.xml'
+                            publishTestResults testResultsPattern: 'app/backend/auth-service/target/surefire-reports/*.xml'
                         }
                     }
                 }
@@ -70,13 +70,13 @@ pipeline {
                     steps {
                         echo 'Testing course-service...'
                         sh '''
-                            cd backend/course-service
+                            cd app/backend/course-service
                             ./mvnw test
                         '''
                     }
                     post {
                         always {
-                            publishTestResults testResultsPattern: 'backend/course-service/target/surefire-reports/*.xml'
+                            publishTestResults testResultsPattern: 'app/backend/course-service/target/surefire-reports/*.xml'
                         }
                     }
                 }
@@ -84,13 +84,13 @@ pipeline {
                     steps {
                         echo 'Testing enrollment-service...'
                         sh '''
-                            cd backend/enrollment-service
+                            cd app/backend/enrollment-service
                             ./mvnw test
                         '''
                     }
                     post {
                         always {
-                            publishTestResults testResultsPattern: 'backend/enrollment-service/target/surefire-reports/*.xml'
+                            publishTestResults testResultsPattern: 'app/backend/enrollment-service/target/surefire-reports/*.xml'
                         }
                     }
                 }
@@ -106,7 +106,7 @@ pipeline {
                             def fullImageName = "${DOCKER_REGISTRY}/cloudblitz/auth-service:${imageTag}"
                             
                             sh """
-                                cd backend/auth-service
+                                cd app/backend/auth-service
                                 docker build -t ${fullImageName} .
                                 docker tag ${fullImageName} ${DOCKER_REGISTRY}/cloudblitz/auth-service:latest
                             """
@@ -122,7 +122,7 @@ pipeline {
                             def fullImageName = "${DOCKER_REGISTRY}/cloudblitz/course-service:${imageTag}"
                             
                             sh """
-                                cd backend/course-service
+                                cd app/backend/course-service
                                 docker build -t ${fullImageName} .
                                 docker tag ${fullImageName} ${DOCKER_REGISTRY}/cloudblitz/course-service:latest
                             """
@@ -138,7 +138,7 @@ pipeline {
                             def fullImageName = "${DOCKER_REGISTRY}/cloudblitz/enrollment-service:${imageTag}"
                             
                             sh """
-                                cd backend/enrollment-service
+                                cd app/backend/enrollment-service
                                 docker build -t ${fullImageName} .
                                 docker tag ${fullImageName} ${DOCKER_REGISTRY}/cloudblitz/enrollment-service:latest
                             """
@@ -188,19 +188,19 @@ pipeline {
                         aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
                         
                         # Create namespace and configmap
-                        kubectl apply -f k8s/namespace.yaml
-                        kubectl apply -f k8s/configmap.yaml
+                        kubectl apply -f app/k8s/namespace.yaml
+                        kubectl apply -f app/k8s/configmap.yaml
                         
                         # Update image tags in deployments
-                        sed -i 's|image: cloudblitz/auth-service:latest|image: ${AUTH_DOCKER_IMAGE}|g' backend/auth-service/k8s/deployment.yaml
-                        sed -i 's|image: cloudblitz/course-service:latest|image: ${COURSE_DOCKER_IMAGE}|g' backend/course-service/k8s/deployment.yaml
-                        sed -i 's|image: cloudblitz/enrollment-service:latest|image: ${ENROLLMENT_DOCKER_IMAGE}|g' backend/enrollment-service/k8s/deployment.yaml
+                        sed -i 's|image: cloudblitz/auth-service:latest|image: ${AUTH_DOCKER_IMAGE}|g' app/backend/auth-service/k8s/deployment.yaml
+                        sed -i 's|image: cloudblitz/course-service:latest|image: ${COURSE_DOCKER_IMAGE}|g' app/backend/course-service/k8s/deployment.yaml
+                        sed -i 's|image: cloudblitz/enrollment-service:latest|image: ${ENROLLMENT_DOCKER_IMAGE}|g' app/backend/enrollment-service/k8s/deployment.yaml
                         
                         # Apply all Kubernetes manifests
-                        kubectl apply -f backend/auth-service/k8s/
-                        kubectl apply -f backend/course-service/k8s/
-                        kubectl apply -f backend/enrollment-service/k8s/
-                        kubectl apply -f k8s/ingress.yaml
+                        kubectl apply -f app/backend/auth-service/k8s/
+                        kubectl apply -f app/backend/course-service/k8s/
+                        kubectl apply -f app/backend/enrollment-service/k8s/
+                        kubectl apply -f app/k8s/ingress.yaml
                         
                         # Wait for all deployments to be ready
                         kubectl rollout status deployment/auth-service -n ${KUBE_NAMESPACE} --timeout=300s
@@ -235,7 +235,7 @@ pipeline {
     post {
         always {
             echo 'Cleaning up workspace...'
-            cleanWs()
+            deleteDir()
         }
         success {
             echo 'Backend deployment successful!'
