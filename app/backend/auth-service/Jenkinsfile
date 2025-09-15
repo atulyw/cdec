@@ -106,6 +106,8 @@ pipeline {
                     docker build -t ${env.DOCKER_IMAGE} .
                     docker tag ${env.DOCKER_IMAGE} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
                     echo "Docker image built and tagged successfully"
+                    docker push ${DOCKER_IMAGE}
+                    docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
                 """
             }
         }
