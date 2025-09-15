@@ -89,7 +89,7 @@ pipeline {
                     def fullImageName = "${DOCKER_REGISTRY}/${IMAGE_NAME}:${imageTag}"
                     
                     awsCodeBuild(
-                        projectName: 'jenkins-docker-build',
+                        projectName: 'jenkins-agent-build',
                         region: 'eu-west-1',
                         credentialsType: 'jenkins',
                         credentialsId: 'aws-credentials-codebuild',
