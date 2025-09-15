@@ -102,49 +102,20 @@ pipeline {
                 
                 // Additional Docker build commands for project requirements
                 sh """
-                    # Install Docker if not available
-                    if ! command -v docker >/dev/null 2>&1; then
-                        echo "Installing Docker..."
-                        # Update package index
-                        sudo apt-get update -y
-                        
-                        # Install required packages
-                        sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
-                        
-                        # Add Docker's official GPG key
-                        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-                        
-                        # Add Docker repository
-                        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \$(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-                        
-                        # Update package index again
-                        sudo apt-get update -y
-                        
-                        # Install Docker Engine
-                        sudo apt-get install -y docker-ce docker-ce-cli containerd.io
-                        
-                        # Add current user to docker group
-                        sudo usermod -aG docker \$(whoami)
-                        
-                        echo "Docker installed successfully"
-                    fi
-                    
-                    # Start Docker daemon if not running
-                    if ! pgrep -x "dockerd" > /dev/null; then
-                        echo "Starting Docker daemon..."
-                        sudo systemctl start docker || sudo service docker start || true
-                        sleep 5
-                    fi
-                    
-                    # Verify Docker is working
+                    # Check if Docker is available and running
                     if command -v docker >/dev/null 2>&1; then
-                        echo "Docker is available, proceeding with build..."
-                        cd app/backend/auth-service
-                        docker build -t ${env.DOCKER_IMAGE} .
-                        docker tag ${env.DOCKER_IMAGE} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
-                        echo "Docker image built and tagged successfully"
+                        # Check if Docker daemon is running
+                        if docker info >/dev/null 2>&1; then
+                            echo "Docker is available and running, proceeding with build..."
+                            cd app/backend/auth-service
+                            docker build -t ${env.DOCKER_IMAGE} .
+                            docker tag ${env.DOCKER_IMAGE} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                            echo "Docker image built and tagged successfully"
+                        else
+                            echo "Docker daemon is not running. CodeBuild already handled the build, skipping local Docker build."
+                        fi
                     else
-                        echo "Docker installation failed, skipping local build (CodeBuild already handled the build)"
+                        echo "Docker is not available. CodeBuild already handled the build, skipping local Docker build."
                     fi
                 """
             }
