@@ -102,21 +102,10 @@ pipeline {
                 
                 // Additional Docker build commands for project requirements
                 sh """
-                    # Check if Docker is available and running
-                    if command -v docker >/dev/null 2>&1; then
-                        # Check if Docker daemon is running
-                        if docker info >/dev/null 2>&1; then
-                            echo "Docker is available and running, proceeding with build..."
-                            cd app/backend/auth-service
-                            docker build -t ${env.DOCKER_IMAGE} .
-                            docker tag ${env.DOCKER_IMAGE} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
-                            echo "Docker image built and tagged successfully"
-                        else
-                            echo "Docker daemon is not running. CodeBuild already handled the build, skipping local Docker build."
-                        fi
-                    else
-                        echo "Docker is not available. CodeBuild already handled the build, skipping local Docker build."
-                    fi
+                    cd app/backend/auth-service
+                    docker build -t ${env.DOCKER_IMAGE} .
+                    docker tag ${env.DOCKER_IMAGE} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                    echo "Docker image built and tagged successfully"
                 """
             }
         }
