@@ -92,7 +92,7 @@ pipeline {
                         projectName: 'jenkins-docker-build',
                         region: 'eu-west-1',
                         credentialsType: 'jenkins',
-                        credentialsId: 'aws-credentials',
+                        credentialsId: 'aws-credentials-codebuild',
                         sourceControlType: 'project'
                     )
                     
