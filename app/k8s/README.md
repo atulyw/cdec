@@ -23,7 +23,7 @@ Update the following in your Jenkins pipeline:
 
 ```bash
 AWS_REGION=us-east-1
-EKS_CLUSTER_NAME=cloudblitz-cluster
+EKS_CLUSTER_NAME=backend-dev-cluster
 DOCKER_REGISTRY=your-docker-registry.com
 ```
 
