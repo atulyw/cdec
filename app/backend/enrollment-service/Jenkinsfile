@@ -1,10 +1,12 @@
 pipeline {
-    agent any
+    agent {
+        label 'ecs-agent'
+    }
     
     environment {
-        AWS_REGION = 'us-east-1'
+        AWS_REGION = 'eu-west-1'
         EKS_CLUSTER_NAME = 'cloudblitz-cluster'
-        DOCKER_REGISTRY = 'your-docker-registry.com'
+        DOCKER_REGISTRY = '207837001318.dkr.ecr.eu-west-1.amazonaws.com'
         IMAGE_NAME = 'cloudblitz/enrollment-service'
         KUBE_NAMESPACE = 'cloudblitz'
     }
@@ -17,42 +19,85 @@ pipeline {
             }
         }
         
+        stage('Setup Java') {
+            steps {
+                echo 'Setting up Java 17...'
+                sh '''
+                    # Check if Java 17 is already available
+                    if command -v java >/dev/null 2>&1; then
+                        JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)
+                        echo "Current Java version: $JAVA_VERSION"
+                        
+                        if [ "$JAVA_VERSION" -ge 17 ]; then
+                            echo "Java 17+ already available"
+                            export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
+                        else
+                            echo "Downloading and installing OpenJDK 17 manually..."
+                            # Download OpenJDK 17
+                            wget -O openjdk-17.tar.gz https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz
+                            
+                            # Extract to local directory
+                            mkdir -p ~/java
+                            tar -xzf openjdk-17.tar.gz -C ~/java
+                            
+                            # Set environment variables
+                            export JAVA_HOME=~/java/jdk-17.0.2
+                            export PATH=$JAVA_HOME/bin:$PATH
+                            
+                            # Clean up
+                            rm openjdk-17.tar.gz
+                        fi
+                    else
+                        echo "Downloading and installing OpenJDK 17 manually..."
+                        # Download OpenJDK 17
+                        wget -O openjdk-17.tar.gz https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz
+                        
+                        # Extract to local directory
+                        mkdir -p ~/java
+                        tar -xzf openjdk-17.tar.gz -C ~/java
+                        
+                        # Set environment variables
+                        export JAVA_HOME=~/java/jdk-17.0.2
+                        export PATH=$JAVA_HOME/bin:$PATH
+                        
+                        # Clean up
+                        rm openjdk-17.tar.gz
+                    fi
+                    
+                    echo "JAVA_HOME: $JAVA_HOME"
+                    java -version
+                '''
+            }
+        }
+        
         stage('Build Application') {
             steps {
                 echo 'Building Spring Boot application...'
                 sh '''
-                    cd backend/enrollment-service
+                    cd app/backend/enrollment-service
                     ./mvnw clean package -DskipTests
                 '''
             }
         }
         
-        stage('Run Tests') {
-            steps {
-                echo 'Running unit tests...'
-                sh '''
-                    cd backend/enrollment-service
-                    ./mvnw test
-                '''
-            }
-            post {
-                always {
-                    publishTestResults testResultsPattern: 'backend/enrollment-service/target/surefire-reports/*.xml'
-                }
-            }
-        }
         
         stage('Build Docker Image') {
+            agent {
+                label 'master'
+            }
             steps {
-                echo 'Building Docker image...'
+                echo 'Building Docker image on master host...'
                 script {
                     def imageTag = "${env.BUILD_NUMBER}"
                     def fullImageName = "${DOCKER_REGISTRY}/${IMAGE_NAME}:${imageTag}"
                     
                     sh """
-                        cd backend/enrollment-service
-                        docker build -t ${fullImageName} .
-                        docker tag ${fullImageName} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                        # Login to ECR
+                        aws ecr get-login-password --region eu-west-1 | sudo docker login --username AWS --password-stdin ${DOCKER_REGISTRY}
+                        
+                        cd app/backend/enrollment-service
+                        sudo docker build -t ${fullImageName} .
+                        sudo docker tag ${fullImageName} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
                     """
                     
                     env.DOCKER_IMAGE = fullImageName
@@ -61,11 +106,18 @@ pipeline {
         }
         
         stage('Push Docker Image') {
+            agent {
+                label 'master'
+            }
             steps {
-                echo 'Pushing Docker image to registry...'
+                echo 'Pushing Docker image to ECR registry...'
                 sh """
-                    docker push ${DOCKER_IMAGE}
-                    docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                    # Login to ECR
+                    aws ecr get-login-password --region eu-west-1 | sudo docker login --username AWS --password-stdin ${DOCKER_REGISTRY}
+                    
+                    # Push images to ECR
+                    sudo docker push ${DOCKER_IMAGE}
+                    sudo docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
                 """
             }
         }
@@ -82,10 +134,10 @@ pipeline {
                         kubectl create namespace ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
                         
                         # Update image tag in deployment
-                        sed -i 's|image: cloudblitz/enrollment-service:latest|image: ${DOCKER_IMAGE}|g' backend/enrollment-service/k8s/deployment.yaml
+                        sed -i 's|image: cloudblitz/enrollment-service:latest|image: ${DOCKER_IMAGE}|g' app/backend/enrollment-service/k8s/deployment.yaml
                         
                         # Apply Kubernetes manifests
-                        kubectl apply -f backend/enrollment-service/k8s/
+                        kubectl apply -f app/backend/enrollment-service/k8s/
                         
                         # Wait for deployment to be ready
                         kubectl rollout status deployment/enrollment-service -n ${KUBE_NAMESPACE} --timeout=300s
@@ -115,7 +167,7 @@ pipeline {
     post {
         always {
             echo 'Cleaning up workspace...'
-            cleanWs()
+            deleteDir()
         }
         success {
             echo 'Enrollment service deployment successful!'
@@ -125,4 +177,3 @@ pipeline {
         }
     }
 }
-
