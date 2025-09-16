@@ -31,7 +31,7 @@ pipeline {
     environment {
         TF_VAR_environment = "${params.ENVIRONMENT}"
         AWS_DEFAULT_REGION = 'eu-west-1'
-        TF_STATE_BUCKET = 'terraform-state-bucket-cdec'
+        TF_STATE_BUCKET = 'terraform-state-bucket-cdec41'
         TF_STATE_KEY = 'frontend/${params.ENVIRONMENT}/terraform-v2.tfstate'
         TF_STATE_REGION = 'eu-west-1'
     }
@@ -66,7 +66,7 @@ pipeline {
                             cat > backend.tf << 'EOF'
 terraform {
   backend "s3" {
-    bucket         = "terraform-state-bucket-cdec-proj"
+    bucket         = "terraform-state-bucket-cdec41"
     key            = "frontend/dev/terraform-v3.tfstate"
     region         = "eu-north-1"
     encrypt        = true
