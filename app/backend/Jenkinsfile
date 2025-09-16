@@ -6,7 +6,7 @@ pipeline {
     environment {
         AWS_REGION = 'us-east-1'
         EKS_CLUSTER_NAME = 'backend-dev-cluster'
-        DOCKER_REGISTRY = 'your-docker-registry.com'
+        DOCKER_REGISTRY = '207837001318.dkr.ecr.eu-west-1.amazonaws.com'
         KUBE_NAMESPACE = 'cloudblitz'
     }
     
@@ -101,6 +101,13 @@ pipeline {
             agent {
                 label 'master'
             }
+            steps {
+                echo 'Logging into ECR and building Docker images...'
+                sh """
+                    # Login to ECR
+                    aws ecr get-login-password --region eu-west-1 | sudo docker login --username AWS --password-stdin ${DOCKER_REGISTRY}
+                """
+            }
             parallel {
                 stage('Build Auth Service Image') {
                     steps {
@@ -110,8 +117,8 @@ pipeline {
                             
                             sh """
                                 cd app/backend/auth-service
-                                docker build -t ${fullImageName} .
-                                docker tag ${fullImageName} ${DOCKER_REGISTRY}/cloudblitz/auth-service:latest
+                                sudo docker build -t ${fullImageName} .
+                                sudo docker tag ${fullImageName} ${DOCKER_REGISTRY}/cloudblitz/auth-service:latest
                             """
                             
                             env.AUTH_DOCKER_IMAGE = fullImageName
@@ -126,8 +133,8 @@ pipeline {
                             
                             sh """
                                 cd app/backend/course-service
-                                docker build -t ${fullImageName} .
-                                docker tag ${fullImageName} ${DOCKER_REGISTRY}/cloudblitz/course-service:latest
+                                sudo docker build -t ${fullImageName} .
+                                sudo docker tag ${fullImageName} ${DOCKER_REGISTRY}/cloudblitz/course-service:latest
                             """
                             
                             env.COURSE_DOCKER_IMAGE = fullImageName
@@ -142,8 +149,8 @@ pipeline {
                             
                             sh """
                                 cd app/backend/enrollment-service
-                                docker build -t ${fullImageName} .
-                                docker tag ${fullImageName} ${DOCKER_REGISTRY}/cloudblitz/enrollment-service:latest
+                                sudo docker build -t ${fullImageName} .
+                                sudo docker tag ${fullImageName} ${DOCKER_REGISTRY}/cloudblitz/enrollment-service:latest
                             """
                             
                             env.ENROLLMENT_DOCKER_IMAGE = fullImageName
@@ -157,28 +164,35 @@ pipeline {
             agent {
                 label 'master'
             }
+            steps {
+                echo 'Pushing Docker images to ECR registry...'
+                sh """
+                    # Login to ECR
+                    aws ecr get-login-password --region eu-west-1 | sudo docker login --username AWS --password-stdin ${DOCKER_REGISTRY}
+                """
+            }
             parallel {
                 stage('Push Auth Service Image') {
                     steps {
                         sh """
-                            docker push ${AUTH_DOCKER_IMAGE}
-                            docker push ${DOCKER_REGISTRY}/cloudblitz/auth-service:latest
+                            sudo docker push ${AUTH_DOCKER_IMAGE}
+                            sudo docker push ${DOCKER_REGISTRY}/cloudblitz/auth-service:latest
                         """
                     }
                 }
                 stage('Push Course Service Image') {
                     steps {
                         sh """
-                            docker push ${COURSE_DOCKER_IMAGE}
-                            docker push ${DOCKER_REGISTRY}/cloudblitz/course-service:latest
+                            sudo docker push ${COURSE_DOCKER_IMAGE}
+                            sudo docker push ${DOCKER_REGISTRY}/cloudblitz/course-service:latest
                         """
                     }
                 }
                 stage('Push Enrollment Service Image') {
                     steps {
                         sh """
-                            docker push ${ENROLLMENT_DOCKER_IMAGE}
-                            docker push ${DOCKER_REGISTRY}/cloudblitz/enrollment-service:latest
+                            sudo docker push ${ENROLLMENT_DOCKER_IMAGE}
+                            sudo docker push ${DOCKER_REGISTRY}/cloudblitz/enrollment-service:latest
                         """
                     }
                 }

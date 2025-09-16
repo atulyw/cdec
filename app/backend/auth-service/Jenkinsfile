@@ -4,9 +4,9 @@ pipeline {
     }
     
     environment {
-        AWS_REGION = 'us-east-1'
+        AWS_REGION = 'eu-west-1'
         EKS_CLUSTER_NAME = 'cloudblitz-cluster'
-        DOCKER_REGISTRY = 'your-docker-registry.com'
+        DOCKER_REGISTRY = '207837001318.dkr.ecr.eu-west-1.amazonaws.com'
         IMAGE_NAME = 'cloudblitz/auth-service'
         KUBE_NAMESPACE = 'cloudblitz'
     }
@@ -91,6 +91,9 @@ pipeline {
                     def fullImageName = "${DOCKER_REGISTRY}/${IMAGE_NAME}:${imageTag}"
                     
                     sh """
+                        # Login to ECR
+                        aws ecr get-login-password --region eu-west-1 | sudo docker login --username AWS --password-stdin ${DOCKER_REGISTRY}
+                        
                         cd app/backend/auth-service
                         sudo docker build -t ${fullImageName} .
                         sudo docker tag ${fullImageName} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
@@ -106,8 +109,12 @@ pipeline {
                 label 'master'
             }
             steps {
-                echo 'Pushing Docker image to registry...'
+                echo 'Pushing Docker image to ECR registry...'
                 sh """
+                    # Login to ECR
+                    aws ecr get-login-password --region eu-west-1 | sudo docker login --username AWS --password-stdin ${DOCKER_REGISTRY}
+                    
+                    # Push images to ECR
                     sudo docker push ${DOCKER_IMAGE}
                     sudo docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
                 """
