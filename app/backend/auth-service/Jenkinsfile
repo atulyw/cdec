@@ -126,22 +126,24 @@ pipeline {
             steps {
                 echo 'Deploying to EKS cluster...'
                 script {
-                    sh """
-                        # Configure kubectl for EKS
-                        aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
-                        
-                        # Create namespace if it doesn't exist
-                        kubectl create namespace ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-                        
-                        # Update image tag in deployment
-                        sed -i 's|image: cloudblitz/auth-service:latest|image: ${DOCKER_IMAGE}|g' app/backend/auth-service/k8s/deployment.yaml
-                        
-                        # Apply Kubernetes manifests
-                        kubectl apply -f app/backend/auth-service/k8s/
-                        
-                        # Wait for deployment to be ready
-                        kubectl rollout status deployment/auth-service -n ${KUBE_NAMESPACE} --timeout=300s
-                    """
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            # Configure kubectl for EKS
+                            aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+                            
+                            # Create namespace if it doesn't exist
+                            kubectl create namespace ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+                            
+                            # Update image tag in deployment
+                            sed -i 's|image: cloudblitz/auth-service:latest|image: ${DOCKER_IMAGE}|g' app/backend/auth-service/k8s/deployment.yaml
+                            
+                            # Apply Kubernetes manifests
+                            kubectl apply -f app/backend/auth-service/k8s/
+                            
+                            # Wait for deployment to be ready
+                            kubectl rollout status deployment/auth-service -n ${KUBE_NAMESPACE} --timeout=300s
+                        """
+                    }
                 }
             }
         }
@@ -150,15 +152,17 @@ pipeline {
             steps {
                 echo 'Performing health check...'
                 script {
-                    sh """
-                        # Get service endpoint
-                        kubectl get service auth-service -n ${KUBE_NAMESPACE}
-                        
-                        # Wait for pods to be ready
-                        kubectl wait --for=condition=ready pod -l app=auth-service -n ${KUBE_NAMESPACE} --timeout=300s
-                        
-                        echo "Auth service deployment completed successfully!"
-                    """
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            # Get service endpoint
+                            kubectl get service auth-service -n ${KUBE_NAMESPACE}
+                            
+                            # Wait for pods to be ready
+                            kubectl wait --for=condition=ready pod -l app=auth-service -n ${KUBE_NAMESPACE} --timeout=300s
+                            
+                            echo "Auth service deployment completed successfully!"
+                        """
+                    }
                 }
             }
         }

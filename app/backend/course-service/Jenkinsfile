@@ -117,7 +117,7 @@ pipeline {
                     # Push images to ECR
                     sudo docker push ${DOCKER_IMAGE}
                     sudo docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
-                    sudo docker rmi ${docker images -q}
+                    sudo docker rmi ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
                 """
             }
         }
@@ -126,22 +126,24 @@ pipeline {
             steps {
                 echo 'Deploying to EKS cluster...'
                 script {
-                    sh """
-                        # Configure kubectl for EKS
-                        aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
-                        
-                        # Create namespace if it doesn't exist
-                        kubectl create namespace ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-                        
-                        # Update image tag in deployment
-                        sed -i 's|image: cloudblitz/course-service:latest|image: ${DOCKER_IMAGE}|g' app/backend/course-service/k8s/deployment.yaml
-                        
-                        # Apply Kubernetes manifests
-                        kubectl apply -f app/backend/course-service/k8s/
-                        
-                        # Wait for deployment to be ready
-                        kubectl rollout status deployment/course-service -n ${KUBE_NAMESPACE} --timeout=300s
-                    """
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            # Configure kubectl for EKS
+                            aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+                            
+                            # Create namespace if it doesn't exist
+                            kubectl create namespace ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+                            
+                            # Update image tag in deployment
+                            sed -i 's|image: cloudblitz/course-service:latest|image: ${DOCKER_IMAGE}|g' app/backend/course-service/k8s/deployment.yaml
+                            
+                            # Apply Kubernetes manifests
+                            kubectl apply -f app/backend/course-service/k8s/
+                            
+                            # Wait for deployment to be ready
+                            kubectl rollout status deployment/course-service -n ${KUBE_NAMESPACE} --timeout=300s
+                        """
+                    }
                 }
             }
         }
@@ -150,15 +152,17 @@ pipeline {
             steps {
                 echo 'Performing health check...'
                 script {
-                    sh """
-                        # Get service endpoint
-                        kubectl get service course-service -n ${KUBE_NAMESPACE}
-                        
-                        # Wait for pods to be ready
-                        kubectl wait --for=condition=ready pod -l app=course-service -n ${KUBE_NAMESPACE} --timeout=300s
-                        
-                        echo "Course service deployment completed successfully!"
-                    """
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            # Get service endpoint
+                            kubectl get service course-service -n ${KUBE_NAMESPACE}
+                            
+                            # Wait for pods to be ready
+                            kubectl wait --for=condition=ready pod -l app=course-service -n ${KUBE_NAMESPACE} --timeout=300s
+                            
+                            echo "Course service deployment completed successfully!"
+                        """
+                    }
                 }
             }
         }
