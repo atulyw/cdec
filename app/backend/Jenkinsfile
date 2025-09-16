@@ -98,6 +98,9 @@ pipeline {
         }
         
         stage('Build Docker Images') {
+            agent {
+                label 'master'
+            }
             parallel {
                 stage('Build Auth Service Image') {
                     steps {
@@ -151,6 +154,9 @@ pipeline {
         }
         
         stage('Push Docker Images') {
+            agent {
+                label 'master'
+            }
             parallel {
                 stage('Push Auth Service Image') {
                     steps {

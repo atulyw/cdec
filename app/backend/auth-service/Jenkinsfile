@@ -80,44 +80,36 @@ pipeline {
             }
         }
         
-        
-        stage('Build Docker Image in CodeBuild') {
+        stage('Build Docker Image') {
+            agent {
+                label 'master'
+            }
             steps {
-                echo "🚀 Starting AWS CodeBuild job for Docker build..."
+                echo 'Building Docker image on master host...'
                 script {
                     def imageTag = "${env.BUILD_NUMBER}"
                     def fullImageName = "${DOCKER_REGISTRY}/${IMAGE_NAME}:${imageTag}"
                     
-                    awsCodeBuild(
-                        projectName: 'jenkins-agent-build',
-                        region: 'eu-west-1',
-                        credentialsType: 'jenkins',
-                        credentialsId: 'aws-credentials-codebuild',
-                        sourceControlType: 'project'
-                    )
+                    sh """
+                        cd app/backend/auth-service
+                        sudo docker build -t ${fullImageName} .
+                        sudo docker tag ${fullImageName} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                    """
                     
                     env.DOCKER_IMAGE = fullImageName
                 }
-                echo "✅ CodeBuild Docker build job completed successfully!"
-                
-                // Additional Docker build commands for project requirements
-                sh """
-                    cd app/backend/auth-service
-                    docker build -t ${env.DOCKER_IMAGE} .
-                    docker tag ${env.DOCKER_IMAGE} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
-                    echo "Docker image built and tagged successfully"
-                    docker push ${DOCKER_IMAGE}
-                    docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
-                """
             }
         }
         
         stage('Push Docker Image') {
+            agent {
+                label 'master'
+            }
             steps {
                 echo 'Pushing Docker image to registry...'
                 sh """
-                    docker push ${DOCKER_IMAGE}
-                    docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                    sudo docker push ${DOCKER_IMAGE}
+                    sudo docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
                 """
             }
         }
