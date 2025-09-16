@@ -3,7 +3,7 @@
 aws_region = "eu-west-1"
 
 # S3 Configuration
-s3_bucket_name     = "frontend-dev-website-cdec41"
+s3_bucket_name     = "pluspluspharmacy-dev-frontend"
 s3_enable_versioning = true
 
 # CloudFront Configuration
