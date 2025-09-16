@@ -31,7 +31,7 @@ pipeline {
     environment {
         TF_VAR_environment = "${params.ENVIRONMENT}"
         AWS_DEFAULT_REGION = 'eu-west-1'
-        TF_STATE_BUCKET = 'terraform-state-bucket-cdecb41'
+        TF_STATE_BUCKET = 'terraform-state-bucket-cdec41'
         TF_STATE_KEY = 'backend/${params.ENVIRONMENT}/terraform-v2.tfstate'
         TF_STATE_REGION = 'eu-west-1'
     }
@@ -50,48 +50,7 @@ pipeline {
             }
         }
         
-        // Step 2: Verify AWS Access
-        stage('Verify AWS Access') {
-            steps {
-                script {
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
-                        sh """
-                            echo "🔍 Verifying AWS credentials and permissions..."
-                            
-                            # Check AWS identity
-                            echo "Current AWS identity:"
-                            aws sts get-caller-identity || {
-                                echo "❌ AWS credentials are invalid or expired"
-                                exit 1
-                            }
-                            
-                            # Check S3 bucket access
-                            echo "Checking S3 bucket: ${TF_STATE_BUCKET}"
-                            aws s3 ls s3://${TF_STATE_BUCKET}/ || {
-                                echo "❌ Cannot access S3 bucket: ${TF_STATE_BUCKET}"
-                                echo "Required permissions:"
-                                echo "- s3:ListBucket"
-                                echo "- s3:GetObject"
-                                echo "- s3:PutObject"
-                                echo "- s3:DeleteObject"
-                                exit 1
-                            }
-                            
-                            # Check DynamoDB table access (for state locking)
-                            echo "Checking DynamoDB table: terraform-state-lock"
-                            aws dynamodb describe-table --table-name terraform-state-lock --region ${TF_STATE_REGION} || {
-                                echo "⚠️ DynamoDB table 'terraform-state-lock' not found or no access"
-                                echo "State locking will be disabled"
-                            }
-                            
-                            echo "✅ AWS access verification passed!"
-                        """
-                    }
-                }
-            }
-        }
-        
-        // Step 3: Setup Terraform and connect to AWS
+        // Step 2: Setup Terraform and connect to AWS
         stage('Setup Terraform') {
             steps {
                 script {
@@ -106,7 +65,7 @@ pipeline {
                             cat > backend.tf << 'EOF'
 terraform {
   backend "s3" {
-    bucket         = "terraform-state-bucket-cdecb41"
+    bucket         = "terraform-state-bucket-cdec41"
     key            = "backend/dev/terraform-v2.tfstate"
     region         = "eu-west-1"
     encrypt        = true
@@ -119,31 +78,15 @@ EOF
                             # Clean up any old state files that might cause problems
                             rm -f terraform.tfstate* .terraform.lock.hcl
                             
-                            # Check if we can access the S3 bucket first
-                            echo "Checking S3 bucket access..."
-                            aws s3 ls s3://${TF_STATE_BUCKET}/ || {
-                                echo "❌ Cannot access S3 bucket: ${TF_STATE_BUCKET}"
-                                echo "Please check AWS credentials and bucket permissions"
-                                exit 1
-                            }
-                            
                             # Initialize Terraform (downloads providers and sets up backend)
-                            echo "Initializing Terraform..."
-                            terraform init -upgrade || {
-                                echo "❌ Terraform initialization failed"
-                                echo "This might be due to:"
-                                echo "1. Missing S3 bucket permissions"
-                                echo "2. Bucket doesn't exist"
-                                echo "3. Incorrect AWS credentials"
-                                exit 1
-                            }
+                            terraform init -upgrade
                         """
                     }
                 }
             }
         }
         
-        // Step 4: Plan what infrastructure will be created or destroyed
+        // Step 3: Plan what infrastructure will be created or destroyed
         stage('Plan Infrastructure') {
             steps {
                 script {
@@ -172,7 +115,7 @@ EOF
             }
         }
         
-        // Step 5: Create or Delete the infrastructure
+        // Step 4: Create or Delete the infrastructure
         stage('Apply Infrastructure Changes') {
             steps {
                 script {
@@ -213,7 +156,7 @@ EOF
             }
         }
         
-        // Step 6: Show results
+        // Step 5: Show results
         stage('Show Results') {
             steps {
                 script {
@@ -245,7 +188,7 @@ EOF
             }
         }
         
-        // Step 7: Verify the EKS cluster is working (only for create action)
+        // Step 6: Verify the EKS cluster is working (only for create action)
         stage('Verify EKS Cluster') {
             when {
                 expression { params.ACTION == 'create' }

@@ -1,7 +1,7 @@
 # Terraform Backend Infrastructure Configuration
 
 aws_region = "eu-west-1"
-state_bucket_name = "terraform-state-bucket-cdecb41"
+state_bucket_name = "terraform-state-bucket-cdec41"
 dynamodb_table_name = "terraform-state-lock"
 
 tags = {
