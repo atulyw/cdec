@@ -3,8 +3,8 @@ pipeline {
     
     environment {
         AWS_REGION = 'eu-west-1'
-        S3_BUCKET = 'frontend-dev-website-cdec41'
-        CLOUDFRONT_DISTRIBUTION_ID = 'EDXT3KF2CP81O'
+        S3_BUCKET = 'pluspluspharmacy-dev-frontend'
+        CLOUDFRONT_DISTRIBUTION_ID = 'E3IMBS7VIPKCF0'
         NODE_VERSION = '20'
     }
     
