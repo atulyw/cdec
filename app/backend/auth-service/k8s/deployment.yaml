@@ -24,7 +24,7 @@ spec:
         - containerPort: 8081
         env:
         - name: MONGO_URI
-          value: "mongodb://admin:password@mongodb-saas:27017/cb_auth?authSource=admin"
+          value: "mongodb+srv://atulyw:R8RfzxlNDb6Z68pe@cdec-dev.et2yiaw.mongodb.net/cb_auth?retryWrites=true&w=majority&appName=cdec-dev"
         - name: JWT_SECRET
           value: "CloudBlitzJWTSecretKeyForSecureAuthentication2024!@#"
         - name: SERVER_PORT

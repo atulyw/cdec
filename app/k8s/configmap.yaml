@@ -5,10 +5,13 @@ metadata:
   namespace: cloudblitz
 data:
   # MongoDB Configuration
-  MONGO_HOST: "mongodb-saas"
+  MONGO_HOST: "cdec-dev.et2yiaw.mongodb.net"
   MONGO_PORT: "27017"
-  MONGO_USER: "admin"
+  MONGO_USER: "atulyw"
   MONGO_AUTH_SOURCE: "admin"
+  MONGO_URI_AUTH: "mongodb+srv://atulyw:R8RfzxlNDb6Z68pe@cdec-dev.et2yiaw.mongodb.net/cb_auth?retryWrites=true&w=majority&appName=cdec-dev"
+  MONGO_URI_COURSE: "mongodb+srv://atulyw:R8RfzxlNDb6Z68pe@cdec-dev.et2yiaw.mongodb.net/cb_courses?retryWrites=true&w=majority&appName=cdec-dev"
+  MONGO_URI_ENROLLMENT: "mongodb+srv://atulyw:R8RfzxlNDb6Z68pe@cdec-dev.et2yiaw.mongodb.net/cb_enrollments?retryWrites=true&w=majority&appName=cdec-dev"
   
   # Database Names
   AUTH_DB: "cb_auth"

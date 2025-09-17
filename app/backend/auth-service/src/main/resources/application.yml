@@ -6,7 +6,7 @@ spring:
     name: auth-service
   data:
     mongodb:
-      uri: ${MONGO_URI:mongodb://localhost:27017/cb_auth}
+      uri: ${MONGO_URI:mongodb+srv://atulyw:R8RfzxlNDb6Z68pe@cdec-dev.et2yiaw.mongodb.net/cb_auth?retryWrites=true&w=majority&appName=cdec-dev}
   security:
     user:
       name: admin

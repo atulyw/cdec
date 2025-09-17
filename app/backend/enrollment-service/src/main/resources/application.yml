@@ -6,7 +6,7 @@ spring:
     name: enrollment-service
   data:
     mongodb:
-      uri: ${MONGO_URI:mongodb://localhost:27017/cb_enrollments}
+      uri: ${MONGO_URI:mongodb+srv://atulyw:R8RfzxlNDb6Z68pe@cdec-dev.et2yiaw.mongodb.net/cb_enrollments?retryWrites=true&w=majority&appName=cdec-dev}
 
 jwt:
   secret: ${JWT_SECRET:CloudBlitzJWTSecretKeyForSecureAuthentication2024!@#}

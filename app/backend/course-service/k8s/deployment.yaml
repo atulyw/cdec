@@ -24,7 +24,7 @@ spec:
         - containerPort: 8082
         env:
         - name: MONGO_URI
-          value: "mongodb://admin:password@mongodb-saas:27017/cb_courses?authSource=admin"
+          value: "mongodb+srv://atulyw:R8RfzxlNDb6Z68pe@cdec-dev.et2yiaw.mongodb.net/cb_courses?retryWrites=true&w=majority&appName=cdec-dev"
         - name: SERVER_PORT
           value: "8082"
         resources:
