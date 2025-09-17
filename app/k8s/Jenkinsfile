@@ -1,0 +1,226 @@
+pipeline {
+    agent {
+        label 'ecs-agent'
+    }
+    
+    environment {
+        AWS_REGION = 'eu-west-1'
+        EKS_CLUSTER_NAME = 'backend-dev-cluster'
+        KUBE_NAMESPACE = 'cloudblitz'
+        DOMAIN_NAME = 'api.junioraicoders.com'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out source code...'
+                checkout scm
+            }
+        }
+        
+        stage('Validate Kubernetes Manifests') {
+            steps {
+                echo 'Validating Kubernetes manifests...'
+                script {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            # Configure kubectl for EKS
+                            aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+                            
+                            # Validate namespace
+                            kubectl apply --dry-run=client -f app/k8s/namespace.yaml
+                            
+                            # Validate configmap
+                            kubectl apply --dry-run=client -f app/k8s/configmap.yaml
+                            
+                            # Validate ingress
+                            kubectl apply --dry-run=client -f app/k8s/ingress.yaml
+                            
+                            echo "All Kubernetes manifests are valid!"
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy Namespace') {
+            steps {
+                echo 'Deploying namespace...'
+                script {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            # Configure kubectl for EKS
+                            aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+                            
+                            # Apply namespace
+                            kubectl apply -f app/k8s/namespace.yaml
+                            
+                            # Verify namespace creation
+                            kubectl get namespace ${KUBE_NAMESPACE}
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy ConfigMap') {
+            steps {
+                echo 'Deploying ConfigMap...'
+                script {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            # Configure kubectl for EKS
+                            aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+                            
+                            # Apply configmap
+                            kubectl apply -f app/k8s/configmap.yaml
+                            
+                            # Verify configmap
+                            kubectl get configmap cloudblitz-config -n ${KUBE_NAMESPACE}
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy Ingress') {
+            steps {
+                echo 'Deploying ALB Ingress...'
+                script {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            # Configure kubectl for EKS
+                            aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+                            
+                            # Apply ingress
+                            kubectl apply -f app/k8s/ingress.yaml
+                            
+                            # Wait for ingress to be ready
+                            kubectl wait --for=condition=ready ingress/cloudblitz-api-ingress -n ${KUBE_NAMESPACE} --timeout=300s
+                            
+                            # Get ingress details
+                            kubectl get ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE}
+                            
+                            # Get ALB details
+                            kubectl describe ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE}
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                echo 'Verifying deployment...'
+                script {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            # Configure kubectl for EKS
+                            aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+                            
+                            # Check namespace
+                            echo "=== Namespace Status ==="
+                            kubectl get namespace ${KUBE_NAMESPACE}
+                            
+                            # Check configmap
+                            echo "=== ConfigMap Status ==="
+                            kubectl get configmap -n ${KUBE_NAMESPACE}
+                            
+                            # Check ingress
+                            echo "=== Ingress Status ==="
+                            kubectl get ingress -n ${KUBE_NAMESPACE}
+                            
+                            # Check ALB status
+                            echo "=== ALB Status ==="
+                            kubectl describe ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE} | grep -A 10 "LoadBalancer Ingress"
+                            
+                            # Get ALB DNS name
+                            ALB_DNS=\$(kubectl get ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+                            echo "ALB DNS Name: \$ALB_DNS"
+                            
+                            # Check if services are running (if they exist)
+                            echo "=== Services Status ==="
+                            kubectl get services -n ${KUBE_NAMESPACE} || echo "No services found yet"
+                            
+                            # Check if deployments are running (if they exist)
+                            echo "=== Deployments Status ==="
+                            kubectl get deployments -n ${KUBE_NAMESPACE} || echo "No deployments found yet"
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                echo 'Performing health check...'
+                script {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            # Configure kubectl for EKS
+                            aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+                            
+                            # Get ALB DNS name
+                            ALB_DNS=\$(kubectl get ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+                            
+                            if [ -n "\$ALB_DNS" ]; then
+                                echo "ALB DNS Name: \$ALB_DNS"
+                                echo "ALB URL: http://\$ALB_DNS"
+                                echo "Domain URL: https://${DOMAIN_NAME}"
+                                
+                                # Wait for ALB to be ready (this can take a few minutes)
+                                echo "Waiting for ALB to be ready..."
+                                sleep 30
+                                
+                                # Test ALB endpoint (optional - may fail if services aren't deployed yet)
+                                echo "Testing ALB endpoint..."
+                                curl -I http://\$ALB_DNS/api/auth/health || echo "ALB endpoint not ready yet (this is normal if services aren't deployed)"
+                            else
+                                echo "ALB DNS name not available yet. Check ingress status."
+                            fi
+                        """
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Cleaning up workspace...'
+            deleteDir()
+        }
+        success {
+            echo 'Kubernetes deployment successful!'
+            script {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                    sh """
+                        # Configure kubectl for EKS
+                        aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+                        
+                        # Get final status
+                        echo "=== Final Deployment Status ==="
+                        kubectl get all -n ${KUBE_NAMESPACE}
+                        kubectl get ingress -n ${KUBE_NAMESPACE}
+                    """
+                }
+            }
+        }
+        failure {
+            echo 'Kubernetes deployment failed!'
+            script {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                    sh """
+                        # Configure kubectl for EKS
+                        aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+                        
+                        # Get error details
+                        echo "=== Error Details ==="
+                        kubectl get events -n ${KUBE_NAMESPACE} --sort-by='.lastTimestamp'
+                        kubectl describe ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE}
+                    """
+                }
+            }
+        }
+    }
+}
