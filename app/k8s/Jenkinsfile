@@ -95,20 +95,8 @@ pipeline {
                             # Apply ingress
                             kubectl apply -f app/k8s/ingress.yaml
                             
-                            # Wait for ALB to be created (ALB ingress doesn't have "ready" condition)
-                            echo "Waiting for ALB to be created..."
-                            sleep 30
-                            
-                            # Check if ALB address is assigned
-                            for i in {1..10}; do
-                                ALB_ADDRESS=$(kubectl get ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-                                if [ -n "$ALB_ADDRESS" ]; then
-                                    echo "ALB created successfully: $ALB_ADDRESS"
-                                    break
-                                fi
-                                echo "Waiting for ALB address... (attempt $i/10)"
-                                sleep 30
-                            done
+                            # Wait for ingress to be ready
+                            kubectl wait --for=condition=ready ingress/cloudblitz-api-ingress -n ${KUBE_NAMESPACE} --timeout=300s
                             
                             # Get ingress details
                             kubectl get ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE}

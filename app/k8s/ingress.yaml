@@ -15,28 +15,12 @@ metadata:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:207837001318:certificate/65050d2c-e0b7-453a-99a5-6dccdccf5c78
-    alb.ingress.kubernetes.io/actions.ssl-redirect: |
-      {
-        "Type": "redirect",
-        "RedirectConfig": {
-          "Protocol": "HTTPS",
-          "Port": "443",
-          "StatusCode": "HTTP_301"
-        }
-      }
 spec:
   ingressClassName: alb
   rules:
   - host: api.junioraicoders.com
     http:
       paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: ssl-redirect
-            port:
-              name: use-annotation
       - path: /api/auth
         pathType: Prefix
         backend:
