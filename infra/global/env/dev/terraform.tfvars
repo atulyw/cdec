@@ -3,7 +3,7 @@
 aws_region = "eu-west-1"
 
 # Domain Configuration
-domain_name = "pluspluspharmacy.com"  # Replace with your actual domain
+domain_name = "junioraicoders.com"  # Replace with your actual domain
 create_hosted_zone = true
 
 # CloudFront Configuration
