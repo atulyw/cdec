@@ -4,7 +4,6 @@ metadata:
   name: cloudblitz-api-ingress
   namespace: cloudblitz
   annotations:
-    kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/load-balancer-name: cloudblitz-api-alb
@@ -15,7 +14,7 @@ metadata:
     alb.ingress.kubernetes.io/unhealthy-threshold-count: '3'
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:207837001318:certificate/e13c07f6-7467-4d4b-89af-d0111e592298
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:207837001318:certificate/65050d2c-e0b7-453a-99a5-6dccdccf5c78
     alb.ingress.kubernetes.io/actions.ssl-redirect: |
       {
         "Type": "redirect",
@@ -26,6 +25,7 @@ metadata:
         }
       }
 spec:
+  ingressClassName: alb
   rules:
   - host: api.junioraicoders.com
     http:
