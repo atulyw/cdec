@@ -52,6 +52,12 @@ pipeline {
                 echo 'Building the React application...'
                 dir('app/frontend') {
                     sh '''
+                        # Set environment variables for the build
+                        export VITE_AUTH_API="https://api.junioraicoders.com/api/auth"
+                        export VITE_COURSE_API="https://api.junioraicoders.com/api/courses"
+                        export VITE_ENROLL_API="https://api.junioraicoders.com/api/enroll"
+                        
+                        # Build the application
                         npm run build
                         
                         # Check if build was successful
@@ -107,8 +113,8 @@ pipeline {
                     sleep 30
                     
                     # Check if the main page loads
-                    if curl -f -s https://www.junioraicoders.com > /dev/null; then
-                        echo "✅ Frontend is accessible at https://www.junioraicoders.com"
+                    if curl -f -s https://junioraicoders.com > /dev/null; then
+                        echo "✅ Frontend is accessible at https://junioraicoders.com"
                     else
                         echo "❌ Frontend is not accessible yet"
                         echo "This might be normal - CloudFront can take a few minutes to update"

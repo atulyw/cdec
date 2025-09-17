@@ -53,6 +53,12 @@ pipeline {
                 echo '🏗️ Building the React application...'
                 sh '''
                     cd frontend
+                    
+                    # Set environment variables for the build
+                    export VITE_AUTH_API="https://api.junioraicoders.com/api/auth"
+                    export VITE_COURSE_API="https://api.junioraicoders.com/api/courses"
+                    export VITE_ENROLL_API="https://api.junioraicoders.com/api/enroll"
+                    
                     npm run build
                     
                     # Check if build folder was created
