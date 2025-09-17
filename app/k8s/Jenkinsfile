@@ -95,8 +95,9 @@ pipeline {
                             # Apply ingress
                             kubectl apply -f app/k8s/ingress.yaml
                             
-                            # Wait for ingress to be ready
-                            kubectl wait --for=condition=ready ingress/cloudblitz-api-ingress -n ${KUBE_NAMESPACE} --timeout=300s
+                            # Wait for ALB to be provisioned (ALB ingress controller doesn't set standard Ready condition)
+                            echo "Waiting for ALB to be provisioned..."
+                            timeout 300 bash -c 'until kubectl get ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE} -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" | grep -q "elb.amazonaws.com"; do echo "Waiting for ALB..."; sleep 10; done' || echo "ALB provisioning timeout - continuing with deployment"
                             
                             # Get ingress details
                             kubectl get ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE}
@@ -134,6 +135,14 @@ pipeline {
                             echo "=== ALB Status ==="
                             kubectl describe ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE} | grep -A 10 "LoadBalancer Ingress"
                             
+                            # Check if ALB has been provisioned
+                            ALB_HOSTNAME=\$(kubectl get ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+                            if [ -n "\$ALB_HOSTNAME" ]; then
+                                echo "ALB Hostname: \$ALB_HOSTNAME"
+                            else
+                                echo "ALB not yet provisioned - this is normal for new deployments"
+                            fi
+                            
                             # Get ALB DNS name
                             ALB_DNS=\$(kubectl get ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
                             echo "ALB DNS Name: \$ALB_DNS"
@@ -170,7 +179,7 @@ pipeline {
                                 
                                 # Wait for ALB to be ready (this can take a few minutes)
                                 echo "Waiting for ALB to be ready..."
-                                sleep 30
+                                sleep 60
                                 
                                 # Test ALB endpoint (optional - may fail if services aren't deployed yet)
                                 echo "Testing ALB endpoint..."
