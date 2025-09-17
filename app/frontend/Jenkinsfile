@@ -107,8 +107,8 @@ pipeline {
                     sleep 30
                     
                     # Check if the main page loads
-                    if curl -f -s https://cloudblitz.in > /dev/null; then
-                        echo "✅ Frontend is accessible at https://cloudblitz.in"
+                    if curl -f -s https://www.junioraicoders.com > /dev/null; then
+                        echo "✅ Frontend is accessible at https://www.junioraicoders.com"
                     else
                         echo "❌ Frontend is not accessible yet"
                         echo "This might be normal - CloudFront can take a few minutes to update"
@@ -125,7 +125,7 @@ pipeline {
         }
         success {
             echo '🎉 Frontend deployment successful!'
-            echo 'Your website should be available at: https://cloudblitz.in'
+            echo 'Your website should be available at: https://www.junioraicoders.com'
         }
         failure {
             echo '❌ Frontend deployment failed!'

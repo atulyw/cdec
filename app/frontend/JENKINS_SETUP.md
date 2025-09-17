@@ -128,7 +128,7 @@ aws cloudfront get-distribution --id YOUR_DISTRIBUTION_ID
 ```
 
 ### 6.2 View Website
-- Production URL: `https://cloudblitz.in`
+- Production URL: `https://www.junioraicoders.com`
 - Check if changes are visible (may take 5-15 minutes)
 
 ### 6.3 Jenkins Build History

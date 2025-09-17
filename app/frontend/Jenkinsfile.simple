@@ -120,11 +120,11 @@ pipeline {
                     
                     # Try to access the website
                     echo "Checking if website is accessible..."
-                    if curl -f -s https://cloudblitz.in > /dev/null; then
-                        echo "✅ SUCCESS: Website is accessible at https://cloudblitz.in"
+                    if curl -f -s https://www.junioraicoders.com > /dev/null; then
+                        echo "✅ SUCCESS: Website is accessible at https://www.junioraicoders.com"
                     else
                         echo "⚠️  Website not accessible yet (this is normal - CloudFront takes time)"
-                        echo "Please wait 5-15 minutes and check https://cloudblitz.in manually"
+                        echo "Please wait 5-15 minutes and check https://www.junioraicoders.com manually"
                     fi
                 '''
             }
@@ -142,7 +142,7 @@ pipeline {
             echo '🎉🎉🎉 DEPLOYMENT SUCCESSFUL! 🎉🎉🎉'
             echo ''
             echo 'Your website should be available at:'
-            echo '🌐 https://cloudblitz.in'
+            echo '🌐 https://www.junioraicoders.com'
             echo ''
             echo 'If you don\'t see changes immediately, wait 5-15 minutes'
             echo 'for CloudFront to update the cache.'
