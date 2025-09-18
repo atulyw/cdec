@@ -255,7 +255,7 @@ Conditions:
 
 ## Pipeline Implementation
 
-### Basic Jenkinsfile with SonarCloud
+### Basic Jenkinsfile with SonarCloud (Maven Plugin Approach)
 
 ```groovy
 pipeline {
@@ -263,7 +263,8 @@ pipeline {
     
     environment {
         SONAR_TOKEN = credentials('sonarcloud-token')
-        SONAR_PROJECT_KEY = 'your-org_your-project'
+        SONAR_PROJECT_KEY = 'atulyw_cdec'
+        SONAR_ORG = 'atulyw'
     }
     
     stages {
@@ -292,14 +293,13 @@ pipeline {
         
         stage('SonarCloud Analysis') {
             steps {
-                withSonarQubeEnv('SonarCloud') {
-                    sh '''
-                        mvn sonar:sonar \
-                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                            -Dsonar.organization=your-org \
-                            -Dsonar.host.url=https://sonarcloud.io \
-                            -Dsonar.login=${SONAR_TOKEN}
-                    '''
+                script {
+                    withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
+                        sh '''
+                            # Run SonarCloud analysis using Maven plugin
+                            mvn verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=${SONAR_PROJECT_KEY}
+                        '''
+                    }
                 }
             }
         }
@@ -338,7 +338,26 @@ pipeline {
 }
 ```
 
-### Advanced Pipeline with Multiple Gates
+### Required pom.xml Configuration
+
+Add the following properties to your `pom.xml` file:
+
+```xml
+<properties>
+    <java.version>17</java.version>
+    <sonar.organization>atulyw</sonar.organization>
+</properties>
+```
+
+### Key Benefits of Maven Plugin Approach
+
+- ✅ **Simplified Configuration**: No need to download and setup standalone scanner
+- ✅ **Integrated with Maven**: Leverages existing Maven build process
+- ✅ **Cleaner Pipeline**: Removes unnecessary download and cleanup steps
+- ✅ **Better Performance**: Uses Maven's dependency management
+- ✅ **Easier Maintenance**: Single command execution
+
+### Advanced Pipeline with Multiple Gates (Updated Maven Plugin)
 
 ```groovy
 pipeline {
@@ -346,8 +365,8 @@ pipeline {
     
     environment {
         SONAR_TOKEN = credentials('sonarcloud-token')
-        SONAR_PROJECT_KEY = 'your-org_your-project'
-        SONAR_ORG = 'your-org'
+        SONAR_PROJECT_KEY = 'atulyw_cdec'
+        SONAR_ORG = 'atulyw'
     }
     
     stages {
@@ -387,18 +406,18 @@ pipeline {
         
         stage('SonarCloud Analysis') {
             steps {
-                withSonarQubeEnv('SonarCloud') {
-                    sh '''
-                        mvn sonar:sonar \
-                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                            -Dsonar.organization=${SONAR_ORG} \
-                            -Dsonar.host.url=https://sonarcloud.io \
-                            -Dsonar.login=${SONAR_TOKEN} \
-                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-                            -Dsonar.java.binaries=target/classes \
-                            -Dsonar.sources=src/main/java \
-                            -Dsonar.tests=src/test/java
-                    '''
+                script {
+                    withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
+                        sh '''
+                            # Run SonarCloud analysis using Maven plugin with coverage
+                            mvn verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+                                -Dsonar.java.binaries=target/classes \
+                                -Dsonar.sources=src/main/java \
+                                -Dsonar.tests=src/test/java
+                        '''
+                    }
                 }
             }
         }
@@ -479,7 +498,7 @@ pipeline {
 }
 ```
 
-### Multi-Branch Pipeline
+### Multi-Branch Pipeline (Updated Maven Plugin)
 
 ```groovy
 pipeline {
@@ -487,7 +506,8 @@ pipeline {
     
     environment {
         SONAR_TOKEN = credentials('sonarcloud-token')
-        SONAR_PROJECT_KEY = 'your-org_your-project'
+        SONAR_PROJECT_KEY = 'atulyw_cdec'
+        SONAR_ORG = 'atulyw'
     }
     
     stages {
@@ -516,18 +536,18 @@ pipeline {
         
         stage('SonarCloud Analysis') {
             steps {
-                withSonarQubeEnv('SonarCloud') {
-                    sh '''
-                        mvn sonar:sonar \
-                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                            -Dsonar.organization=your-org \
-                            -Dsonar.host.url=https://sonarcloud.io \
-                            -Dsonar.login=${SONAR_TOKEN} \
-                            -Dsonar.branch.name=${BRANCH_NAME} \
-                            -Dsonar.pullrequest.key=${CHANGE_ID} \
-                            -Dsonar.pullrequest.branch=${CHANGE_BRANCH} \
-                            -Dsonar.pullrequest.base=${CHANGE_TARGET}
-                    '''
+                script {
+                    withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
+                        sh '''
+                            # Run SonarCloud analysis using Maven plugin with branch support
+                            mvn verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                -Dsonar.branch.name=${BRANCH_NAME} \
+                                -Dsonar.pullrequest.key=${CHANGE_ID} \
+                                -Dsonar.pullrequest.branch=${CHANGE_BRANCH} \
+                                -Dsonar.pullrequest.base=${CHANGE_TARGET}
+                        '''
+                    }
                 }
             }
         }
@@ -547,15 +567,15 @@ pipeline {
 
 ## Advanced Configuration
 
-### SonarCloud Properties File
+### SonarCloud Properties File (Optional with Maven Plugin)
 
-Create `sonar-project.properties` in your project root:
+With the Maven plugin approach, you can still use a `sonar-project.properties` file for additional configuration:
 
 ```properties
 # Project identification
-sonar.projectKey=your-org_your-project
-sonar.organization=your-org
-sonar.projectName=Your Project Name
+sonar.projectKey=atulyw_cdec
+sonar.organization=atulyw
+sonar.projectName=CDEC Project
 sonar.projectVersion=1.0
 
 # Source code
@@ -576,7 +596,9 @@ sonar.test.exclusions=**/test/**
 sonar.qualitygate.wait=true
 ```
 
-### Environment-Specific Configuration
+**Note**: With the Maven plugin approach, most properties can be configured directly in the `pom.xml` or passed as command-line arguments, making the properties file optional.
+
+### Environment-Specific Configuration (Updated Maven Plugin)
 
 ```groovy
 pipeline {
@@ -584,6 +606,8 @@ pipeline {
     
     environment {
         SONAR_TOKEN = credentials('sonarcloud-token')
+        SONAR_PROJECT_KEY = 'atulyw_cdec'
+        SONAR_ORG = 'atulyw'
     }
     
     stages {
@@ -591,26 +615,24 @@ pipeline {
             steps {
                 script {
                     def sonarProps = [
-                        'sonar.projectKey=your-org_your-project',
-                        'sonar.organization=your-org',
-                        'sonar.host.url=https://sonarcloud.io',
-                        'sonar.login=' + env.SONAR_TOKEN
+                        'org.sonarsource.scanner.maven:sonar-maven-plugin:sonar',
+                        '-Dsonar.projectKey=' + env.SONAR_PROJECT_KEY
                     ]
                     
                     // Add branch-specific properties
                     if (env.BRANCH_NAME != 'main') {
-                        sonarProps.add('sonar.branch.name=' + env.BRANCH_NAME)
+                        sonarProps.add('-Dsonar.branch.name=' + env.BRANCH_NAME)
                     }
                     
                     // Add pull request properties
                     if (env.CHANGE_ID) {
-                        sonarProps.add('sonar.pullrequest.key=' + env.CHANGE_ID)
-                        sonarProps.add('sonar.pullrequest.branch=' + env.CHANGE_BRANCH)
-                        sonarProps.add('sonar.pullrequest.base=' + env.CHANGE_TARGET)
+                        sonarProps.add('-Dsonar.pullrequest.key=' + env.CHANGE_ID)
+                        sonarProps.add('-Dsonar.pullrequest.branch=' + env.CHANGE_BRANCH)
+                        sonarProps.add('-Dsonar.pullrequest.base=' + env.CHANGE_TARGET)
                     }
                     
-                    withSonarQubeEnv('SonarCloud') {
-                        sh "mvn sonar:sonar ${sonarProps.join(' ')}"
+                    withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
+                        sh "mvn verify ${sonarProps.join(' ')}"
                     }
                 }
             }
@@ -719,11 +741,14 @@ git branch -a
 # Enable debug logging
 export SONAR_LOG_LEVEL=DEBUG
 
-# Run analysis with verbose output
-mvn sonar:sonar -X
+# Run analysis with verbose output (Maven plugin approach)
+mvn verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=atulyw_cdec -X
 
 # Check SonarCloud API
-curl -u your-token: https://sonarcloud.io/api/qualitygates/project_status?projectKey=your-project-key
+curl -u your-token: https://sonarcloud.io/api/qualitygates/project_status?projectKey=atulyw_cdec
+
+# Test Maven plugin installation
+mvn org.sonarsource.scanner.maven:sonar-maven-plugin:help
 ```
 
 ---
@@ -737,10 +762,12 @@ curl -u your-token: https://sonarcloud.io/api/qualitygates/project_status?projec
 - **Balance coverage** with maintainability
 
 ### 2. Pipeline Optimization
+- **Use Maven plugin approach** for better integration and performance
 - **Run analysis in parallel** with other stages
 - **Cache dependencies** to speed up builds
 - **Use appropriate timeouts** for quality gates
 - **Implement proper error handling**
+- **Leverage Maven's dependency management** instead of downloading standalone scanners
 
 ### 3. Team Collaboration
 - **Educate team** on quality gate requirements
@@ -755,10 +782,12 @@ curl -u your-token: https://sonarcloud.io/api/qualitygates/project_status?projec
 - **Monitor access logs**
 
 ### 5. Performance Optimization
+- **Use Maven plugin approach** for faster analysis setup
 - **Exclude unnecessary files** from analysis
 - **Use incremental analysis** for large projects
 - **Optimize test execution** time
 - **Monitor analysis duration**
+- **Avoid downloading standalone scanners** in CI/CD pipelines
 
 ### 6. Monitoring and Alerting
 - **Set up notifications** for gate failures
@@ -782,9 +811,18 @@ SonarCloud integration with Jenkins provides a powerful combination for maintain
 ### Next Steps
 1. Set up your SonarCloud account and project
 2. Configure Jenkins integration
-3. Implement basic quality gates
-4. Gradually refine gate conditions
-5. Monitor and optimize performance
-6. Train your team on quality standards
+3. **Update your pom.xml** with the `sonar.organization` property
+4. **Implement Maven plugin approach** in your Jenkinsfile
+5. Implement basic quality gates
+6. Gradually refine gate conditions
+7. Monitor and optimize performance
+8. Train your team on quality standards
+
+### Recent Updates (Latest Changes)
+- ✅ **Maven Plugin Integration**: Updated all examples to use the Maven SonarScanner plugin
+- ✅ **Simplified Configuration**: Removed standalone scanner setup complexity
+- ✅ **Updated Project Keys**: Changed to `atulyw_cdec` format
+- ✅ **Enhanced Performance**: Leveraged Maven's dependency management
+- ✅ **Cleaner Pipelines**: Reduced download and cleanup steps
 
 Remember: The goal is not to block development but to ensure consistent, high-quality code delivery while maintaining team productivity.
