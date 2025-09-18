@@ -84,48 +84,4 @@ public class EnrollmentController {
         }
         return null;
     }
-
-    // DEMO: Duplicate token extraction logic (will be detected by SonarCloud)
-    private String getTokenFromHeader(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
-    }
-
-    // DEMO: Another duplicate method with similar logic
-    private String parseAuthorizationToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
-    }
-
-    // DEMO: Duplicate validation logic
-    private boolean isValidToken(String token) {
-        if (token == null || token.trim().isEmpty()) {
-            return false;
-        }
-        try {
-            String email = jwtUtil.extractEmail(token);
-            return jwtUtil.validateToken(token, email);
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    // DEMO: Another duplicate validation method
-    private boolean validateJwtToken(String token) {
-        if (token == null || token.trim().isEmpty()) {
-            return false;
-        }
-        try {
-            String email = jwtUtil.extractEmail(token);
-            return jwtUtil.validateToken(token, email);
-        } catch (Exception e) {
-            return false;
-        }
-    }
 }

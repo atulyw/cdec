@@ -53,36 +53,4 @@ public class JwtUtil {
         final String extractedEmail = extractEmail(token);
         return (extractedEmail.equals(email) && !isTokenExpired(token));
     }
-
-    // DEMO: Duplicate validation logic (will be detected by SonarCloud)
-    public Boolean isTokenValid(String token, String email) {
-        final String extractedEmail = extractEmail(token);
-        return (extractedEmail.equals(email) && !isTokenExpired(token));
-    }
-
-    // DEMO: Another duplicate method with similar logic
-    public Boolean checkTokenValidity(String token, String email) {
-        final String extractedEmail = extractEmail(token);
-        return (extractedEmail.equals(email) && !isTokenExpired(token));
-    }
-
-    // DEMO: Duplicate claim extraction logic
-    public String getEmailFromToken(String token) {
-        return extractClaim(token, Claims::getSubject);
-    }
-
-    // DEMO: Another duplicate method
-    public String extractUserEmail(String token) {
-        return extractClaim(token, Claims::getSubject);
-    }
-
-    // DEMO: Duplicate expiration check logic
-    public boolean isExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    // DEMO: Another duplicate method
-    public boolean hasTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
 }

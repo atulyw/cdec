@@ -46,46 +46,4 @@ public class EnrollmentService {
                 return "Unknown Course";
         }
     }
-
-    // DEMO: Intentional code duplication for SonarCloud demonstration
-    public String validateEnrollment(String userId, String courseId) {
-        if (userId == null || userId.trim().isEmpty()) {
-            throw new IllegalArgumentException("User ID cannot be null or empty");
-        }
-        if (courseId == null || courseId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Course ID cannot be null or empty");
-        }
-        if (enrollmentRepository.existsByUserIdAndCourseId(userId, courseId)) {
-            throw new RuntimeException("User is already enrolled in this course");
-        }
-        return "Enrollment is valid";
-    }
-
-    // DEMO: Duplicate validation logic (will be detected by SonarCloud)
-    public String checkEnrollmentEligibility(String userId, String courseId) {
-        if (userId == null || userId.trim().isEmpty()) {
-            throw new IllegalArgumentException("User ID cannot be null or empty");
-        }
-        if (courseId == null || courseId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Course ID cannot be null or empty");
-        }
-        if (enrollmentRepository.existsByUserIdAndCourseId(userId, courseId)) {
-            throw new RuntimeException("User is already enrolled in this course");
-        }
-        return "User is eligible for enrollment";
-    }
-
-    // DEMO: Another duplicate method with similar logic
-    public boolean canUserEnroll(String userId, String courseId) {
-        if (userId == null || userId.trim().isEmpty()) {
-            return false;
-        }
-        if (courseId == null || courseId.trim().isEmpty()) {
-            return false;
-        }
-        if (enrollmentRepository.existsByUserIdAndCourseId(userId, courseId)) {
-            return false;
-        }
-        return true;
-    }
 }
