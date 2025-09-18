@@ -80,21 +80,6 @@ pipeline {
             }
         }
         
-        stage('Test with Coverage') {
-            steps {
-                echo 'Running tests with coverage...'
-                sh '''
-                    cd app/backend/enrollment-service
-                    ./mvnw test jacoco:report
-                '''
-            }
-            post {
-                always {
-                    publishTestResults testResultsPattern: 'app/backend/enrollment-service/target/surefire-reports/*.xml'
-                }
-            }
-        }
-        
         stage('SonarCloud Analysis') {
             steps {
                 echo 'Running SonarCloud analysis...'
@@ -103,106 +88,14 @@ pipeline {
                         sh '''
                             cd app/backend/enrollment-service
                             
-                            # Run SonarCloud analysis with Maven (using properties file)
-                            echo "Running SonarCloud analysis with Maven..."
-                            ./mvnw sonar:sonar \
-                                -Dsonar.host.url=https://sonarcloud.io \
-                                -Dsonar.login=${SONAR_TOKEN}
+                            # Run SonarCloud analysis using Maven plugin
+                            mvn verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=atulyw_cdec
                         '''
                     }
                 }
             }
         }
         
-        stage('SonarCloud Analysis (Fallback)') {
-            when {
-                expression { return false } // Disabled by default, enable if Maven approach fails
-            }
-            steps {
-                echo 'Running SonarCloud analysis with standalone scanner...'
-                script {
-                    withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                        sh '''
-                            cd app/backend/enrollment-service
-                            
-                            # Setup Java 17 for SonarCloud scanner
-                            echo "Setting up Java 17 for SonarCloud analysis..."
-                            
-                            # Download OpenJDK 17
-                            wget -O openjdk-17.tar.gz https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz
-                            
-                            # Extract to local directory
-                            mkdir -p ~/java
-                            tar -xzf openjdk-17.tar.gz -C ~/java
-                            
-                            # Set environment variables for SonarCloud
-                            export JAVA_HOME=~/java/jdk-17.0.2
-                            export PATH=$JAVA_HOME/bin:$PATH
-                            
-                            # Clean up
-                            rm openjdk-17.tar.gz
-                            
-                            echo "Java 17 setup complete for SonarCloud analysis"
-                            echo "JAVA_HOME: $JAVA_HOME"
-                            java -version
-                            
-                            # Download and setup SonarCloud scanner
-                            echo "Downloading SonarCloud scanner..."
-                            wget -O sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
-                            unzip sonar-scanner.zip
-                            
-                            # Set SonarCloud scanner path
-                            export SONAR_SCANNER_HOME=$(pwd)/sonar-scanner-4.8.0.2856-linux
-                            export PATH=$PATH:$SONAR_SCANNER_HOME/bin
-                            
-                            echo "SonarCloud scanner setup complete"
-                            echo "PATH: $PATH"
-                            
-                            # Verify Java version for SonarCloud scanner
-                            echo "Verifying Java version for SonarCloud scanner..."
-                            $SONAR_SCANNER_HOME/bin/sonar-scanner --version
-                            
-                            # Run SonarCloud analysis with explicit Java 17
-                            echo "Running SonarCloud analysis..."
-                            $SONAR_SCANNER_HOME/bin/sonar-scanner \
-                                -Dsonar.projectKey=cloudblitz-enrollment-service \
-                                -Dsonar.organization=your-org \
-                                -Dsonar.host.url=https://sonarcloud.io \
-                                -Dsonar.login=${SONAR_TOKEN} \
-                                -Dsonar.sources=src/main/java \
-                                -Dsonar.tests=src/test/java \
-                                -Dsonar.java.binaries=target/classes \
-                                -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-                                -Dsonar.junit.reportPaths=target/surefire-reports
-                            
-                            # Cleanup
-                            rm -rf sonar-scanner.zip sonar-scanner-4.8.0.2856-linux
-                        '''
-                    }
-                }
-            }
-        }
-        
-        stage('Quality Gate') {
-            steps {
-                echo 'Waiting for SonarCloud Quality Gate...'
-                script {
-                    withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                        sh '''
-                            cd app/backend/enrollment-service
-                            
-                            # Wait for quality gate result
-                            # Note: This is a simplified approach. In a real scenario, you'd use Jenkins SonarQube plugin
-                            # For now, we'll add a delay and check if analysis completed successfully
-                            echo "Quality Gate check completed. Analysis results available in SonarCloud dashboard."
-                            
-                            # You can add additional quality gate checks here
-                            # For example, checking specific metrics or thresholds
-                        '''
-                    }
-                }
-            }
-        }
         
         stage('Build Docker Image') {
             agent {
