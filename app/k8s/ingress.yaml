@@ -14,7 +14,7 @@ metadata:
     alb.ingress.kubernetes.io/unhealthy-threshold-count: '3'
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:207837001318:certificate/65050d2c-e0b7-453a-99a5-6dccdccf5c78
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:207837001318:certificate/65050d2c-e0b7-453a-99a5-6dccdccf5c78 #eu-west-1
 spec:
   ingressClassName: alb
   rules:
