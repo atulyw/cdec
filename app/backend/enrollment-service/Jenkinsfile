@@ -75,8 +75,41 @@ pipeline {
                 echo 'Building Spring Boot application...'
                 sh '''
                     cd app/backend/enrollment-service
-                    ./mvnw clean package -DskipTests
+                    ./mvnw clean package
                 '''
+            }
+        }
+        
+        stage('SonarCloud Analysis') {
+            steps {
+                echo 'Running SonarCloud analysis...'
+                script {
+                    withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
+                        sh '''
+                            cd app/backend/enrollment-service
+                            
+                            # Download and setup SonarCloud scanner
+                            wget -O sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+                            unzip sonar-scanner.zip
+                            export PATH=$PATH:$(pwd)/sonar-scanner-4.8.0.2856-linux/bin
+                            
+                            # Run SonarCloud analysis
+                            sonar-scanner \
+                                -Dsonar.projectKey=cloudblitz-enrollment-service \
+                                -Dsonar.organization=your-org \
+                                -Dsonar.host.url=https://sonarcloud.io \
+                                -Dsonar.login=${SONAR_TOKEN} \
+                                -Dsonar.sources=src/main/java \
+                                -Dsonar.tests=src/test/java \
+                                -Dsonar.java.binaries=target/classes \
+                                -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+                                -Dsonar.junit.reportPaths=target/surefire-reports
+                            
+                            # Cleanup
+                            rm -rf sonar-scanner.zip sonar-scanner-4.8.0.2856-linux
+                        '''
+                    }
+                }
             }
         }
         
