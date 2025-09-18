@@ -127,62 +127,6 @@ pipeline {
                             echo "=== Ingress Status ==="
                             kubectl get ingress -n ${KUBE_NAMESPACE}
                             
-                            # Check ALB status
-                            echo "=== ALB Status ==="
-                            kubectl describe ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE} | grep -A 10 "LoadBalancer Ingress"
-                            
-                            # Check if ALB has been provisioned
-                            ALB_HOSTNAME=\$(kubectl get ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-                            if [ -n "\$ALB_HOSTNAME" ]; then
-                                echo "ALB Hostname: \$ALB_HOSTNAME"
-                            else
-                                echo "ALB not yet provisioned - this is normal for new deployments"
-                            fi
-                            
-                            # Get ALB DNS name
-                            ALB_DNS=\$(kubectl get ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-                            echo "ALB DNS Name: \$ALB_DNS"
-                            
-                            # Check if services are running (if they exist)
-                            echo "=== Services Status ==="
-                            kubectl get services -n ${KUBE_NAMESPACE} || echo "No services found yet"
-                            
-                            # Check if deployments are running (if they exist)
-                            echo "=== Deployments Status ==="
-                            kubectl get deployments -n ${KUBE_NAMESPACE} || echo "No deployments found yet"
-                        """
-                    }
-                }
-            }
-        }
-        
-        stage('Health Check') {
-            steps {
-                echo 'Performing health check...'
-                script {
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
-                        sh """
-                            # Configure kubectl for EKS
-                            aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
-                            
-                            # Get ALB DNS name
-                            ALB_DNS=\$(kubectl get ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-                            
-                            if [ -n "\$ALB_DNS" ]; then
-                                echo "ALB DNS Name: \$ALB_DNS"
-                                echo "ALB URL: http://\$ALB_DNS"
-                                echo "Domain URL: https://${DOMAIN_NAME}"
-                                
-                                # Wait for ALB to be ready (this can take a few minutes)
-                                echo "Waiting for ALB to be ready..."
-                                sleep 60
-                                
-                                # Test ALB endpoint (optional - may fail if services aren't deployed yet)
-                                echo "Testing ALB endpoint..."
-                                curl -I http://\$ALB_DNS/api/auth/health || echo "ALB endpoint not ready yet (this is normal if services aren't deployed)"
-                            else
-                                echo "ALB DNS name not available yet. Check ingress status."
-                            fi
                         """
                     }
                 }
