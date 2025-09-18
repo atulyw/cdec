@@ -94,11 +94,7 @@ pipeline {
                             
                             # Apply ingress
                             kubectl apply -f app/k8s/ingress.yaml
-                            
-                            # Wait for ALB to be provisioned (ALB ingress controller doesn't set standard Ready condition)
-                            echo "Waiting for ALB to be provisioned..."
-                            timeout 300 bash -c 'until kubectl get ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE} -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" | grep -q "elb.amazonaws.com"; do echo "Waiting for ALB..."; sleep 10; done' || echo "ALB provisioning timeout - continuing with deployment"
-                            
+                                                        
                             # Get ingress details
                             kubectl get ingress cloudblitz-api-ingress -n ${KUBE_NAMESPACE}
                             
