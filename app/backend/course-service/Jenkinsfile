@@ -98,26 +98,35 @@ pipeline {
                 always {
                     script {
                         echo 'Checking SonarCloud Quality Gate status...'
-                        withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                            def qualityGateStatus = sh(
-                                script: '''
-                                    cd app/backend/course-service
-                                    curl -s -u ${SONAR_TOKEN}: \
-                                        "https://sonarcloud.io/api/qualitygates/project_status?projectKey=atulyw_cdec" \
-                                        | grep -o '"status":"[^"]*"' | cut -d'"' -f4
-                                ''',
-                                returnStdout: true
-                            ).trim()
-                            
-                            echo "Quality Gate Status: ${qualityGateStatus}"
-                            
-                            if (qualityGateStatus == 'ERROR') {
-                                error "SonarCloud Quality Gate FAILED! Pipeline stopped due to code quality issues."
-                            } else if (qualityGateStatus == 'OK') {
-                                echo "SonarCloud Quality Gate PASSED! Proceeding with deployment."
-                            } else {
-                                echo "Quality Gate Status: ${qualityGateStatus} - Proceeding with caution."
+                        try {
+                            withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
+                                def qualityGateStatus = sh(
+                                    script: '''
+                                        cd app/backend/course-service
+                                        curl -s -u ${SONAR_TOKEN}: \
+                                            "https://sonarcloud.io/api/qualitygates/project_status?projectKey=atulyw_cdec" \
+                                            | grep -o '"status":"[^"]*"' | cut -d'"' -f4
+                                    ''',
+                                    returnStdout: true
+                                ).trim()
+                                
+                                echo "Quality Gate Status: ${qualityGateStatus}"
+                                
+                                if (qualityGateStatus == 'ERROR') {
+                                    echo "❌ SonarCloud Quality Gate FAILED!"
+                                    echo "🚫 Pipeline will be terminated due to code quality issues."
+                                    currentBuild.result = 'FAILURE'
+                                    error "SonarCloud Quality Gate FAILED! Pipeline terminated due to code quality issues."
+                                } else if (qualityGateStatus == 'OK') {
+                                    echo "✅ SonarCloud Quality Gate PASSED! Proceeding with deployment."
+                                } else {
+                                    echo "⚠️ Quality Gate Status: ${qualityGateStatus} - Proceeding with caution."
+                                }
                             }
+                        } catch (Exception e) {
+                            echo "❌ Error checking SonarCloud Quality Gate: ${e.getMessage()}"
+                            currentBuild.result = 'FAILURE'
+                            error "Failed to check SonarCloud Quality Gate. Pipeline terminated."
                         }
                     }
                 }
