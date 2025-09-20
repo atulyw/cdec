@@ -70,13 +70,29 @@ pipeline {
             }
         }
         
-        stage('Build Application') {
+        stage('Build and Test Application') {
             steps {
-                echo 'Building Spring Boot application...'
+                echo 'Building and testing Spring Boot application...'
                 sh '''
                     cd app/backend/course-service
-                    ./mvnw clean package -DskipTests
+                    ./mvnw clean verify
                 '''
+            }
+        }
+        
+        stage('SonarCloud Analysis') {
+            steps {
+                echo 'Running SonarCloud analysis...'
+                withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        cd app/backend/course-service
+                        ./mvnw org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+                            -Dsonar.projectKey=atulyw_cdec \
+                            -Dsonar.organization=atulyw \
+                            -Dsonar.host.url=https://sonarcloud.io \
+                            -Dsonar.login=${SONAR_TOKEN}
+                    '''
+                }
             }
         }
         
