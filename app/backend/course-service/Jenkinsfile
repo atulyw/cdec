@@ -94,6 +94,34 @@ pipeline {
                     '''
                 }
             }
+            post {
+                always {
+                    script {
+                        echo 'Checking SonarCloud Quality Gate status...'
+                        withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
+                            def qualityGateStatus = sh(
+                                script: '''
+                                    cd app/backend/course-service
+                                    curl -s -u ${SONAR_TOKEN}: \
+                                        "https://sonarcloud.io/api/qualitygates/project_status?projectKey=atulyw_cdec" \
+                                        | grep -o '"status":"[^"]*"' | cut -d'"' -f4
+                                ''',
+                                returnStdout: true
+                            ).trim()
+                            
+                            echo "Quality Gate Status: ${qualityGateStatus}"
+                            
+                            if (qualityGateStatus == 'ERROR') {
+                                error "SonarCloud Quality Gate FAILED! Pipeline stopped due to code quality issues."
+                            } else if (qualityGateStatus == 'OK') {
+                                echo "SonarCloud Quality Gate PASSED! Proceeding with deployment."
+                            } else {
+                                echo "Quality Gate Status: ${qualityGateStatus} - Proceeding with caution."
+                            }
+                        }
+                    }
+                }
+            }
         }
         
         stage('Build Docker Image') {
