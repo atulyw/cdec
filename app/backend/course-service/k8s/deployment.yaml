@@ -6,6 +6,9 @@ metadata:
   labels:
     app: course-service
     version: v1
+    tags.datadoghq.com/env: dev
+    tags.datadoghq.com/service: course-service
+    tags.datadoghq.com/version: v1
 spec:
   replicas: 2
   selector:
@@ -16,6 +19,12 @@ spec:
       labels:
         app: course-service
         version: v1
+        tags.datadoghq.com/env: dev
+        tags.datadoghq.com/service: course-service
+        tags.datadoghq.com/version: v1
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        admission.datadoghq.com/java-lib.version: v1.53.0
     spec:
       containers:
       - name: course-service
@@ -27,6 +36,8 @@ spec:
           value: "mongodb+srv://atulyw:R8RfzxlNDb6Z68pe@cdec-dev.et2yiaw.mongodb.net/cb_courses?retryWrites=true&w=majority&appName=cdec-dev"
         - name: SERVER_PORT
           value: "8082"
+        - name: DD_LOGS_INJECTION
+          value: "true"
         resources:
           requests:
             memory: "256Mi"

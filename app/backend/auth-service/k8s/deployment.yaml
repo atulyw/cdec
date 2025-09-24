@@ -6,6 +6,9 @@ metadata:
   labels:
     app: auth-service
     version: v1
+    tags.datadoghq.com/env: dev
+    tags.datadoghq.com/service: auth-service
+    tags.datadoghq.com/version: v1
 spec:
   replicas: 2
   selector:
@@ -16,6 +19,12 @@ spec:
       labels:
         app: auth-service
         version: v1
+        tags.datadoghq.com/env: dev
+        tags.datadoghq.com/service: auth-service
+        tags.datadoghq.com/version: v1
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        admission.datadoghq.com/java-lib.version: v1.53.0
     spec:
       containers:
       - name: auth-service
@@ -29,6 +38,8 @@ spec:
           value: "CloudBlitzJWTSecretKeyForSecureAuthentication2024!@#"
         - name: SERVER_PORT
           value: "8081"
+        - name: DD_LOGS_INJECTION
+          value: "true"
         resources:
           requests:
             memory: "256Mi"
