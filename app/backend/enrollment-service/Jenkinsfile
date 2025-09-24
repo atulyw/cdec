@@ -80,21 +80,6 @@ pipeline {
             }
         }
         
-        stage('SonarCloud Analysis') {
-            steps {
-                echo 'Running SonarCloud analysis...'
-                script {
-                    withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                        sh '''
-                            cd app/backend/enrollment-service
-                            
-                            # Run SonarCloud analysis using Maven plugin
-                            mvn verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=atulyw_cdec
-                        '''
-                    }
-                }
-            }
-        }
         
         
         stage('Build Docker Image') {
