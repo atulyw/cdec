@@ -67,9 +67,9 @@ pipeline {
                             cat > backend.tf << EOF
 terraform {
   backend "s3" {
-    bucket         = "terraform-state-bucket-cdec41"
+    bucket         = "kunja-shop-bucket"
     key            = "global/dev/terraform-global.tfstate"
-    region         = "sa--east-1"
+    region         = "sa-east-1"
     encrypt        = true
   
   }
