@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label 'ecs-agent'
+        label 'custom-agents'
     }
     
     parameters {
@@ -28,10 +28,10 @@ pipeline {
     
     environment {
         TF_VAR_environment = "${params.ENVIRONMENT}"
-        AWS_DEFAULT_REGION = 'eu-west-1'
-        TF_STATE_BUCKET = 'terraform-state-bucket-cdec41'
+        AWS_DEFAULT_REGION = 'sa-east-1'
+        TF_STATE_BUCKET = 'kunja-shop-bucket'
         TF_STATE_KEY = 'global/${params.ENVIRONMENT}/terraform-v2.tfstate'
-        TF_STATE_REGION = 'eu-west-1'
+        TF_STATE_REGION = 'sa-east-1'
     }
     
     stages {
@@ -69,10 +69,9 @@ terraform {
   backend "s3" {
     bucket         = "terraform-state-bucket-cdec41"
     key            = "global/dev/terraform-global.tfstate"
-    region         = "eu-west-1"
+    region         = "sa--east-1"
     encrypt        = true
-    dynamodb_table = "terraform-state-lock"
-    use_lockfile   = true
+  
   }
 }
 EOF
