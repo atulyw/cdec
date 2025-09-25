@@ -1,9 +1,9 @@
 # Frontend Infrastructure - Development Environment Configuration
 
-aws_region = "eu-west-1"
+aws_region = "eu-north-1"
 
 # S3 Configuration
-s3_bucket_name     = "pluspluspharmacy-dev-frontend"
+s3_bucket_name     = "rapidbucketingg2"
 s3_enable_versioning = true
 
 # CloudFront Configuration

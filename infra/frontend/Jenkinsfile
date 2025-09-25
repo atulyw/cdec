@@ -5,7 +5,7 @@
 pipeline {
     // Run on Jenkins agent with label 'ecs-agent'
     agent {
-        label 'ecs-agent'
+        label 'custom-agent'
     }
     
     // Parameters that user can choose when running the pipeline
@@ -30,10 +30,10 @@ pipeline {
     // Environment variables available throughout the pipeline
     environment {
         TF_VAR_environment = "${params.ENVIRONMENT}"
-        AWS_DEFAULT_REGION = 'eu-west-1'
-        TF_STATE_BUCKET = 'terraform-state-bucket-cdec41'
+        AWS_DEFAULT_REGION = 'eu-north-1'
+        TF_STATE_BUCKET = 'rapidbucketingg2'
         TF_STATE_KEY = 'frontend/${params.ENVIRONMENT}/terraform-v2.tfstate'
-        TF_STATE_REGION = 'eu-west-1'
+        TF_STATE_REGION = 'eu-north-1'
     }
     
     // Main pipeline stages
@@ -66,12 +66,10 @@ pipeline {
                             cat > backend.tf << 'EOF'
 terraform {
   backend "s3" {
-    bucket         = "terraform-state-bucket-cdec41"
+    bucket         = "rapidbucketingg2"
     key            = "frontend/dev/terraform-v3.tfstate"
-    region         = "eu-west-1"
+    region         = "eu-north-1"
     encrypt        = true
-    dynamodb_table = "terraform-state-lock"
-    use_lockfile   = true
   }
 }
 EOF
