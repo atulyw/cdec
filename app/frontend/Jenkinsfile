@@ -4,7 +4,7 @@ pipeline {
     environment {
         AWS_REGION = 'eu-north-1'
         S3_BUCKET = 'bucketingisamessyjob'
-        CLOUDFRONT_DISTRIBUTION_ID = 'd16bug4nqq4ms0.cloudfront.net'
+        CLOUDFRONT_DISTRIBUTION_ID = 'ER1ZZE8KITH9H'
         NODE_VERSION = '20'
     }
     
