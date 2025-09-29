@@ -3,7 +3,7 @@
 aws_region = "eu-north-1"
 
 # S3 Configuration
-s3_bucket_name     = "rapidbucketing"
+s3_bucket_name     = "bucketingisamessyjob"
 s3_enable_versioning = true
 
 # CloudFront Configuration
