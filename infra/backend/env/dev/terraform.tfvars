@@ -1,21 +1,21 @@
 # Backend Infrastructure - Development Environment Configuration
 
-aws_region = "eu-west-1"
+aws_region = "eu-north-1"
 vpc_name   = "backend-dev-vpc"
 vpc_cidr   = "10.2.0.0/16"
 
 # Public subnets for load balancers
 public_subnet_cidrs = {
-  "eu-west-1a" = "10.2.1.0/24"
-  "eu-west-1b" = "10.2.2.0/24"
-  "eu-west-1c" = "10.2.3.0/24"
+  "eu-north-1a" = "10.2.1.0/24"
+  "eu-north-1b" = "10.2.2.0/24"
+  "eu-north-1c" = "10.2.3.0/24"
 }
 
 # Private subnets for worker nodes
 private_subnet_cidrs = {
-  "eu-west-1a" = "10.2.10.0/24"
-  "eu-west-1b" = "10.2.20.0/24"
-  "eu-west-1c" = "10.2.30.0/24"
+  "eu-north-1a" = "10.2.10.0/24"
+  "eu-north-1b" = "10.2.20.0/24"
+  "eu-north-1c" = "10.2.30.0/24"
 }
 
 cluster_name    = "backend-dev-cluster"

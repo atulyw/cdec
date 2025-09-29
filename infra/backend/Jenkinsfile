@@ -66,7 +66,7 @@ pipeline {
 terraform {
   backend "s3" {
     bucket         = "rapidbucketing"
-    key            = "backend/dev/terraform-v2.tfstate"
+    key            = "backend/${params.ENVIRONMENT}/terraform-v2.tfstate"
     region         = "eu-north-1"
     encrypt        = true
   }      
@@ -108,7 +108,7 @@ EOF
             post {
                 always {
                     // Save the plan file as an artifact so we can download it
-                    archiveArtifacts artifacts: "infra/backend/env/dev/tfplan-${params.ENVIRONMENT}.out", fingerprint: true
+                    archiveArtifacts artifacts: "infra/backend/env/${params.ENVIRONMENT}/tfplan-${params.ENVIRONMENT}.out", fingerprint: true
                 }
             }
         }
@@ -180,7 +180,7 @@ EOF
                 // Save the outputs file as an artifact (only for create action)
                 script {
                     if (params.ACTION == 'create') {
-                        archiveArtifacts artifacts: "infra/backend/env/dev/terraform-outputs.json", fingerprint: true
+                        archiveArtifacts artifacts: "infra/backend/env/${params.ENVIRONMENT}/terraform-outputs.json", fingerprint: true
                     }
                 }
             }
