@@ -69,7 +69,7 @@ terraform {
     key            = "backend/dev/terraform-v2.tfstate"
     region         = "eu-north-1"
     encrypt        = true
-  }'        
+  }      
 }
 EOF
                             
