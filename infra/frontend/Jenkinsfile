@@ -31,7 +31,7 @@ pipeline {
     environment {
         TF_VAR_environment = "${params.ENVIRONMENT}"
         AWS_DEFAULT_REGION = 'eu-north-1'
-        TF_STATE_BUCKET = 'rapidbucketing
+        TF_STATE_BUCKET = 'rapidbucketing'
         TF_STATE_KEY = 'frontend/${params.ENVIRONMENT}/terraform-v2.tfstate'
         TF_STATE_REGION = 'eu-north-1'
     }
