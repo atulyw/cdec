@@ -1,13 +1,13 @@
 pipeline {
     agent {
-        label 'ecs-agent'
+        label 'custom-agent'
     }
     
     environment {
-        AWS_REGION = 'eu-west-1'
+        AWS_REGION = 'eu-north-1'
         EKS_CLUSTER_NAME = 'backend-dev-cluster'
         KUBE_NAMESPACE = 'cloudblitz'
-        DOMAIN_NAME = 'api.junioraicoders.com'
+        DOMAIN_NAME = 'api.chinmayeee.com'
     }
     
     stages {

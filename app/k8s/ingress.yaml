@@ -14,11 +14,11 @@ metadata:
     alb.ingress.kubernetes.io/unhealthy-threshold-count: '3'
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:207837001318:certificate/65050d2c-e0b7-453a-99a5-6dccdccf5c78 #eu-west-1
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-north-1:442709927351:certificate/cc40a45a-18fb-4bf1-a401-82f39d0ad965
 spec:
   ingressClassName: alb
   rules:
-  - host: api.junioraicoders.com
+  - host: api.chinmayeee.com
     http:
       paths:
       - path: /api/auth
