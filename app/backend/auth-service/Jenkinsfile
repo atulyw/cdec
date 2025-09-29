@@ -1,12 +1,12 @@
 pipeline {
     agent {
-        label 'ecs-agent'
+        label 'custom-agent'
     }
     
     environment {
-        AWS_REGION = 'eu-west-1'
+        AWS_REGION = 'eu-north-1'
         EKS_CLUSTER_NAME = 'backend-dev-cluster'
-        DOCKER_REGISTRY = '207837001318.dkr.ecr.eu-west-1.amazonaws.com'
+        DOCKER_REGISTRY = '442709927351.dkr.ecr.eu-north-1.amazonaws.com'
         IMAGE_NAME = 'cloudblitz/auth-service'
         KUBE_NAMESPACE = 'cloudblitz'
     }
