@@ -114,7 +114,7 @@ pipeline {
                     
                     # Check if the main page loads
                     if curl -f -s https://chinmayeee.com > /dev/null; then
-                        echo "✅ Frontend is accessible at https://junioraicoders.com"
+                        echo "✅ Frontend is accessible at https://chinmayeee.com"
                     else
                         echo "❌ Frontend is not accessible yet"
                         echo "This might be normal - CloudFront can take a few minutes to update"
