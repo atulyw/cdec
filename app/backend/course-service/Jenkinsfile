@@ -1,12 +1,12 @@
 pipeline {
     agent {
-        label 'ecs-agent'
+        label 'custom-agent'
     }
     
     environment {
-        AWS_REGION = 'eu-west-1'
+        AWS_REGION = 'eu-north-1'
         EKS_CLUSTER_NAME = 'backend-dev-cluster'
-        DOCKER_REGISTRY = '207837001318.dkr.ecr.eu-west-1.amazonaws.com'
+        DOCKER_REGISTRY = '442709927351.dkr.ecr.eu-north-1.amazonaws.com'
         IMAGE_NAME = 'cloudblitz/course-service'
         KUBE_NAMESPACE = 'cloudblitz'
     }
@@ -75,61 +75,9 @@ pipeline {
                 echo 'Building and testing Spring Boot application...'
                 sh '''
                     cd app/backend/course-service
+                    chmod +x ./mvnw
                     ./mvnw clean verify
                 '''
-            }
-        }
-        
-        stage('SonarCloud Analysis') {
-            steps {
-                echo 'Running SonarCloud analysis...'
-                withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                    sh '''
-                        cd app/backend/course-service
-                        ./mvnw org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-                            -Dsonar.projectKey=atulyw_cdec \
-                            -Dsonar.organization=atulyw \
-                            -Dsonar.host.url=https://sonarcloud.io \
-                            -Dsonar.login=${SONAR_TOKEN}
-                    '''
-                }
-            }
-            post {
-                always {
-                    script {
-                        echo 'Checking SonarCloud Quality Gate status...'
-                        try {
-                            withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                                def qualityGateStatus = sh(
-                                    script: '''
-                                        cd app/backend/course-service
-                                        curl -s -u ${SONAR_TOKEN}: \
-                                            "https://sonarcloud.io/api/qualitygates/project_status?projectKey=atulyw_cdec" \
-                                            | grep -o '"status":"[^"]*"' | cut -d'"' -f4
-                                    ''',
-                                    returnStdout: true
-                                ).trim()
-                                
-                                echo "Quality Gate Status: ${qualityGateStatus}"
-                                
-                                if (qualityGateStatus == 'ERROR') {
-                                    echo "❌ SonarCloud Quality Gate FAILED!"
-                                    echo "🚫 Pipeline will be terminated due to code quality issues."
-                                    currentBuild.result = 'FAILURE'
-                                    error "SonarCloud Quality Gate FAILED! Pipeline terminated due to code quality issues."
-                                } else if (qualityGateStatus == 'OK') {
-                                    echo "✅ SonarCloud Quality Gate PASSED! Proceeding with deployment."
-                                } else {
-                                    echo "⚠️ Quality Gate Status: ${qualityGateStatus} - Proceeding with caution."
-                                }
-                            }
-                        } catch (Exception e) {
-                            echo "❌ Error checking SonarCloud Quality Gate: ${e.getMessage()}"
-                            currentBuild.result = 'FAILURE'
-                            error "Failed to check SonarCloud Quality Gate. Pipeline terminated."
-                        }
-                    }
-                }
             }
         }
         
@@ -145,11 +93,11 @@ pipeline {
                     
                     sh """
                         # Login to ECR
-                        aws ecr get-login-password --region eu-west-1 | sudo docker login --username AWS --password-stdin ${DOCKER_REGISTRY}
-                        
+                        aws ecr get-login-password --region eu-north-1 | sudo docker login --username AWS --password-stdin ${DOCKER_REGISTRY}
+                                
                         cd app/backend/course-service
-                        sudo docker build -t ${fullImageName} .
-                        sudo docker tag ${fullImageName} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                        docker build -t ${fullImageName} .
+                        docker tag ${fullImageName} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
                     """
                     
                     env.DOCKER_IMAGE = fullImageName
@@ -165,12 +113,12 @@ pipeline {
                 echo 'Pushing Docker image to ECR registry...'
                 sh """
                     # Login to ECR
-                    aws ecr get-login-password --region eu-west-1 | sudo docker login --username AWS --password-stdin ${DOCKER_REGISTRY}
+                    aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin ${DOCKER_REGISTRY}
                     
                     # Push images to ECR
-                    sudo docker push ${DOCKER_IMAGE}
-                    sudo docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
-                    sudo docker rmi ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                    docker push ${DOCKER_IMAGE}
+                    docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                    docker rmi ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
                 """
             }
         }

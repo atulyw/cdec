@@ -1,10 +1,10 @@
 pipeline {
-    agent { label 'ecs-agent' }
+    agent { label 'custom-agent' }
     
     environment {
-        AWS_REGION = 'eu-west-1'
-        S3_BUCKET = 'pluspluspharmacy-dev-frontend'
-        CLOUDFRONT_DISTRIBUTION_ID = 'E3IMBS7VIPKCF0'
+        AWS_REGION = 'eu-north-1'
+        S3_BUCKET = 'bucketingisamessyjob'
+        CLOUDFRONT_DISTRIBUTION_ID = 'ER1ZZE8KITH9H'
         NODE_VERSION = '20'
     }
     
@@ -53,9 +53,9 @@ pipeline {
                 dir('app/frontend') {
                     sh '''
                         # Set environment variables for the build
-                        export VITE_AUTH_API="https://api.junioraicoders.com/api/auth"
-                        export VITE_COURSE_API="https://api.junioraicoders.com/api/courses"
-                        export VITE_ENROLL_API="https://api.junioraicoders.com/api/enroll"
+                        export VITE_AUTH_API="https://api.chinmayeee.com/api/auth"
+                        export VITE_COURSE_API="https://api.chinmayeee.com/api/courses"
+                        export VITE_ENROLL_API="https://api.chinmayeee.com/api/enroll"
                         
                         # Build the application
                         npm run build
@@ -113,8 +113,8 @@ pipeline {
                     sleep 30
                     
                     # Check if the main page loads
-                    if curl -f -s https://junioraicoders.com > /dev/null; then
-                        echo "✅ Frontend is accessible at https://junioraicoders.com"
+                    if curl -f -s https://chinmayeee.com > /dev/null; then
+                        echo "✅ Frontend is accessible at https://chinmayeee.com"
                     else
                         echo "❌ Frontend is not accessible yet"
                         echo "This might be normal - CloudFront can take a few minutes to update"
@@ -131,7 +131,7 @@ pipeline {
         }
         success {
             echo '🎉 Frontend deployment successful!'
-            echo 'Your website should be available at: https://www.junioraicoders.com'
+            echo 'Your website should be available at: https://www.chinmayeee.com'
         }
         failure {
             echo '❌ Frontend deployment failed!'
