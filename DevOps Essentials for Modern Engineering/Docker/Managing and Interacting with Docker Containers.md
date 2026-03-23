@@ -11,6 +11,7 @@
 8. [File Operations](#file-operations)
 9. [Monitoring and Logs](#monitoring-and-logs)
 10. [Advanced Container Operations](#advanced-container-operations)
+11. [Docker Prune and Disk Cleanup](#docker-prune-and-disk-cleanup)
 
 ---
 
@@ -830,6 +831,93 @@ docker run --cap-add=SYS_ADMIN nginx
 
 ---
 
+## Docker Prune and Disk Cleanup
+
+Prune commands remove **unused** Docker objects (stopped containers, dangling or unused images, unused networks, build cache, and optionally volumes). Use `-f` (`--force`) in scripts and cron so Docker does not prompt for confirmation.
+
+### Prune commands reference
+
+#### **Per-object prune**
+```bash
+# Stopped containers only
+docker container prune
+docker container prune -f
+docker container prune -f --filter "until=24h"
+
+# Dangling images (no tag, not referenced)
+docker image prune
+docker image prune -f
+
+# All images not used by any container (aggressive)
+docker image prune -a
+docker image prune -a -f
+
+# Unused networks (default bridge never removed)
+docker network prune
+docker network prune -f
+
+# Anonymous volumes not attached to a container
+docker volume prune
+docker volume prune -f
+
+# Build cache (classic builder / BuildKit)
+docker builder prune
+docker builder prune -a -f
+
+# Buildx / BuildKit cache (when using docker buildx)
+docker buildx prune
+docker buildx prune -a -f
+
+# Disabled plugins
+docker plugin prune
+docker plugin prune -f
+```
+
+#### **System-wide prune**
+```bash
+# Unused containers, networks, dangling images, build cache
+docker system prune
+docker system prune -f
+
+# Also remove all unused images (not just dangling)
+docker system prune -a -f
+
+# Also remove unused volumes (can delete data — verify first)
+docker system prune -a -f --volumes
+
+# See disk usage before pruning
+docker system df
+docker system df -v
+```
+
+### Monthly prune cron job
+
+Run `which docker` on the host and use that absolute path in crontab. The examples below assume `/usr/bin/docker` (common on Linux); adjust if yours differs (for example `/usr/local/bin/docker`).
+
+**Conservative (safe for most servers):** removes stopped containers, unused networks, dangling images, and build cache. Does **not** remove tagged unused images or volumes.
+
+```cron
+# At 03:00 on the 1st of every month
+0 3 1 * * /usr/bin/docker system prune -f >> /var/log/docker-prune.log 2>&1
+```
+
+**More aggressive (review before use):** also removes images not used by any container. Still omits volumes unless you add `--volumes`.
+
+```cron
+0 3 1 * * /usr/bin/docker system prune -af >> /var/log/docker-prune.log 2>&1
+```
+
+**Including unused volumes (destructive):** only if you accept deleting data in volumes nothing references.
+
+```cron
+# WARNING: prunes unused volumes — data loss risk
+0 3 1 * * /usr/bin/docker system prune -af --volumes >> /var/log/docker-prune.log 2>&1
+```
+
+Install with `crontab -e` (user) or a file under `/etc/cron.d/` (root). Ensure the cron user can talk to the Docker daemon (often `root` or membership in the `docker` group).
+
+---
+
 ## Best Practices
 
 ### Container Management
@@ -890,5 +978,8 @@ This guide covers the essential Docker commands for container management:
 - `--name`: Container naming
 - `-it`: Interactive mode
 - `-v`: Volume mounting
+
+### **Prune (cleanup)**
+- `docker container|image|network|volume prune`, `docker builder prune`, `docker buildx prune`, `docker plugin prune`, `docker system prune` (see [Docker Prune and Disk Cleanup](#docker-prune-and-disk-cleanup))
 
 Mastering these commands will give you full control over Docker containers and enable you to effectively manage containerized applications in development and production environments. 
