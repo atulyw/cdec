@@ -780,6 +780,14 @@ docker save my-image:latest > image-backup.tar
 # Create custom network
 docker network create my-network
 
+# Create bridge network with custom subnet, gateway, and IP range for containers
+docker network create \
+  --driver bridge \
+  --subnet 10.10.0.0/16 \
+  --gateway 10.10.0.1 \
+  --ip-range 10.10.1.0/24 \
+  my-network
+
 # Connect container to network
 docker network connect my-network my-container
 
