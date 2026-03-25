@@ -3,8 +3,8 @@
 ## Table of Contents
 1. [What is a Dockerfile?](#what-is-a-dockerfile)
 2. [Dockerfile Structure and Components](#dockerfile-structure-and-components)
-3. [Essential Dockerfile Instructions](#essential-dockerfile-instructions)
-4. [Advanced Dockerfile Techniques](#advanced-dockerfile-techniques)
+3. [Essential Dockerfile Instructions](#essential-dockerfile-instructions) — [Quick ref: CMD vs ENTRYPOINT](#quick-reference-cmd-vs-entrypoint)
+4. [Advanced Dockerfile Techniques](#advanced-dockerfile-techniques) — [Quick ref: ARG vs ENV](#quick-reference-arg-vs-env)
 5. [Best Practices](#best-practices)
 6. [Common Use Cases](#common-use-cases)
 7. [Troubleshooting](#troubleshooting)
@@ -311,6 +311,75 @@ CMD ["--help"]
 #### CMD vs ENTRYPOINT
 - **CMD**: Default command, easily overridden
 - **ENTRYPOINT**: Container's main executable, harder to override
+
+### Quick Reference: CMD vs ENTRYPOINT
+
+**Core idea:** `ENTRYPOINT` is the fixed executable (what always runs). `CMD` is the default arguments—or a fallback command if there is no `ENTRYPOINT`. Together: *entrypoint = command*, *CMD = default parameters* (easy to override at `docker run`).
+
+| Feature | CMD | ENTRYPOINT |
+|--------|-----|------------|
+| Purpose | Default command or args | Main executable |
+| Overridable at `docker run`? | Yes (replaced by what you pass) | Not easily; use `--entrypoint` to replace |
+| Typical use | Flexible images (bases, dev shells) | Tool-like images with stable behavior |
+| With both present | Supplies default args to `ENTRYPOINT` | Defines the program that runs |
+
+**CMD only** — default is easy to replace entirely:
+
+```dockerfile
+FROM alpine
+CMD ["echo", "Hello World"]
+```
+
+```bash
+docker run myimage                  # Hello World
+docker run myimage echo "Hi"        # Hi  (whole default command replaced)
+```
+
+**ENTRYPOINT only** — you are not replacing the program; you pass new arguments to it:
+
+```dockerfile
+FROM alpine
+ENTRYPOINT ["echo"]
+```
+
+```bash
+docker run myimage Hello            # echo Hello
+docker run myimage "Hi Atul"        # echo Hi Atul
+docker run --entrypoint sh myimage -c "echo override"   # replace ENTRYPOINT
+```
+
+**ENTRYPOINT + CMD (common production pattern):**
+
+```dockerfile
+FROM node:18
+WORKDIR /app
+COPY . .
+ENTRYPOINT ["node"]
+CMD ["server.js"]
+```
+
+```bash
+docker run myapp                    # node server.js
+docker run myapp app2.js            # node app2.js  (CMD overridden; ENTRYPOINT unchanged)
+```
+
+**`sleep` examples (minimal mental model):**
+
+| Dockerfile | `docker run myimage` | Override example |
+|------------|----------------------|------------------|
+| `CMD ["sleep", "5"]` | sleeps 5s | `docker run myimage sleep 10` replaces CMD |
+| `ENTRYPOINT ["sleep"]` | needs an arg (e.g. `docker run myimage 5`) | `docker run myimage 10` → `sleep 10` |
+| `ENTRYPOINT ["sleep"]` + `CMD ["5"]` | `sleep 5` | `docker run myimage 10` → `sleep 10` |
+
+Override ENTRYPOINT when needed: `docker run --entrypoint echo myimage hello`.
+
+**Prefer exec form (JSON array)** for both instructions so the main process is PID 1 and signals (SIGTERM) behave correctly in Docker and Kubernetes. Avoid shell form (e.g. `ENTRYPOINT node app.js`) for production services.
+
+**Kubernetes:** Container `args` usually replace image `CMD` while `command` overrides `ENTRYPOINT`—so a fixed `ENTRYPOINT` plus overridable `CMD` matches how orchestrators pass arguments.
+
+**Interview-style one-liner:** *ENTRYPOINT defines the main command; CMD provides default arguments. When both are set, Docker runs `ENTRYPOINT` with `CMD` as its default args, and runtime arguments override `CMD` only.*
+
+---
 
 ### Detailed Comparison: CMD vs ENTRYPOINT
 
@@ -645,6 +714,71 @@ FROM ubuntu:${VERSION}
 LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.vcs-ref=$VCS_REF
 ```
+
+### Quick Reference: ARG vs ENV
+
+**Core idea:** `ARG` is for **build time** (passed with `docker build --build-arg`). It is **not** persisted in the final image as an environment variable unless you copy it into an `ENV`. `ENV` is available at **build and runtime** and can be overridden with `docker run -e`.
+
+| | ARG | ENV |
+|---|-----|-----|
+| Available during `docker build` | Yes | Yes |
+| Available in running container by default | No | Yes |
+| Override at build | `--build-arg NAME=value` | Set in Dockerfile or inherit from `ARG` |
+| Override at run | No (not an env var in the container) | `-e NAME=value` |
+| Stored in image metadata as env | No | Yes |
+
+**ARG (build-only):**
+
+```dockerfile
+FROM alpine
+ARG APP_VERSION=1.0
+RUN echo "Building version $APP_VERSION"
+```
+
+```bash
+docker build -t myimage --build-arg APP_VERSION=2.0 .
+# During build: sees 2.0; after build, APP_VERSION is not automatically set at runtime
+```
+
+**ENV (runtime + build):**
+
+```dockerfile
+FROM alpine
+ENV APP_VERSION=1.0
+CMD ["sh", "-c", "echo Running version $APP_VERSION"]
+```
+
+```bash
+docker run myimage                    # Running version 1.0
+docker run -e APP_VERSION=2.0 myimage # Running version 2.0
+```
+
+**Common pattern — promote build-time choice to runtime:**
+
+```dockerfile
+FROM node:18
+ARG NODE_ENV=production
+ENV NODE_ENV=$NODE_ENV
+CMD ["node", "app.js"]
+```
+
+```bash
+docker build -t myapp --build-arg NODE_ENV=development .
+# Build steps see development; container also has NODE_ENV=development unless overridden at run
+```
+
+**Gotcha:** `ARG` substitution does not magically populate exec-form `CMD`/`ENTRYPOINT` the way shell expansion might suggest; an `ARG` alone is not available inside the container at runtime. This does **not** give you a runtime value:
+
+```dockerfile
+ARG NAME=Atul
+CMD ["echo", "$NAME"]   # $NAME is not expanded as you might expect in exec form; use ENV if you need it at run
+```
+
+**Practical split:** use `ARG` for base tags, build flags, and version labels; use `ENV` for app configuration, ports, and modes the process reads when the container runs. For secrets, prefer runtime secrets mechanisms—`ARG` values can appear in image history, so treat them as sensitive.
+
+**Memory trick:** *ARG = build only · ENV = build + run*
+
+---
 
 ### 3. USER Instruction
 
