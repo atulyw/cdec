@@ -9,7 +9,9 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/students")
-@CrossOrigin(origins = "http://localhost:5173")
+// Allow requests from any frontend origin for this beginner demo.
+// In production, limit this to your real frontend domain.
+@CrossOrigin(origins = "*")
 public class StudentController {
 
     private final StudentService studentService;
