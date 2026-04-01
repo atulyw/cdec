@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  # Frontend container:
+  # Builds the React app, then serves the built files with Nginx.
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://backend:8080/api
+    environment:
+      VITE_API_BASE_URL: http://backend:8080/api
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  # Backend container:
+  # Runs the Spring Boot API and connects to MongoDB.
+  backend:
+    build:
+      context: ./backend
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/studentdb
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongodb
+
+  # Database container:
+  # Uses the official MongoDB image and stores data in a named volume.
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:
