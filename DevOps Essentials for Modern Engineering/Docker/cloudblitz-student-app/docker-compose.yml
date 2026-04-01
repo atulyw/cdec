@@ -7,9 +7,9 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_BASE_URL: http://backend:8080/api
+        VITE_API_BASE_URL: http://3.254.96.11:8080/api
     environment:
-      VITE_API_BASE_URL: http://backend:8080/api
+      VITE_API_BASE_URL: http://3.254.96.11:8080/api
     ports:
       - "5173:80"
     depends_on:
