@@ -14,12 +14,11 @@ metadata:
     alb.ingress.kubernetes.io/unhealthy-threshold-count: '3'
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:207837001318:certificate/65050d2c-e0b7-453a-99a5-6dccdccf5c78 #eu-west-1
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:021097241246:certificate/65599c96-c791-44ce-873b-090465c1ea69 #eu-west-1
 spec:
   ingressClassName: alb
   rules:
-  - host: api.junioraicoders.com
-    http:
+  - host: api.thecloudnine.in
       paths:
       - path: /api/auth
         pathType: Prefix
