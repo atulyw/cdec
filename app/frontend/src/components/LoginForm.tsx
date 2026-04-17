@@ -6,7 +6,7 @@ import { Button } from './ui/Button'
 import { Card, CardContent } from './ui/Card'
 import { Input } from './ui/Input'
 import { useHealthCheck } from '../hooks/useHealthCheck'
-import { HealthSphere } from './HealthSphere'
+import { HealthSphereCard } from './HealthSphereCard'
 
 interface LoginFormProps {
   onToggleMode: () => void;
@@ -23,7 +23,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, isLogin }) =
   const [loading, setLoading] = useState(false);
   const { login, register } = useAuth();
   const { toast } = useToast()
-  const { services } = useHealthCheck({ pollMs: 30_000, timeoutMs: 5_000 })
+  const { services, refresh } = useHealthCheck({ pollMs: 30_000, timeoutMs: 5_000 })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +84,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, isLogin }) =
                 </p>
                 <div className="mt-6 space-y-4">
                   {services.map((s) => (
-                    <HealthSphere key={s.key} service={s} size="sm" />
+                    <HealthSphereCard key={s.key} service={s} onRefresh={() => void refresh()} compact />
                   ))}
                 </div>
               </div>

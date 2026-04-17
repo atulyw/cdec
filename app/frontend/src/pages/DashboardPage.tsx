@@ -1,6 +1,6 @@
 import { BookOpen, Sparkles } from 'lucide-react'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { HealthSphere } from '../components/HealthSphere'
+import { HealthSphereCard } from '../components/HealthSphereCard'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card'
 import { CourseList } from '../components/CourseList'
 import { useAuth } from '../contexts/AuthContext'
@@ -154,12 +154,7 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {services.map((s) => (
-          <div
-            key={s.key}
-            className="rounded-2xl border border-white/10 bg-zinc-950/55 p-5 shadow-[0_14px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl"
-          >
-            <HealthSphere service={s} />
-          </div>
+          <HealthSphereCard key={s.key} service={s} onRefresh={() => void refresh()} />
         ))}
       </div>
 

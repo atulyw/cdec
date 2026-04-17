@@ -27,7 +27,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = React.useState<Theme>(() => {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw === 'light' || raw === 'dark' || raw === 'system') return raw
-    return 'system'
+    // Default to dark for this app’s visual style.
+    return 'dark'
   })
 
   const [resolvedTheme, setResolvedTheme] = React.useState<'light' | 'dark'>(() => {

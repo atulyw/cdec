@@ -53,11 +53,18 @@ function normalizeHealth(payload: unknown, ok: boolean): { state: HealthState; d
     const status = typeof any.status === 'string' ? any.status.toLowerCase() : undefined
     const healthyBool = typeof any.healthy === 'boolean' ? any.healthy : undefined
     const successBool = typeof any.success === 'boolean' ? any.success : undefined
+    const dataStr = typeof any.data === 'string' ? any.data.toLowerCase() : undefined
 
     if (healthyBool === true || successBool === true || status === 'up' || status === 'ok' || status === 'healthy') {
       return { state: 'healthy' }
     }
     if (healthyBool === false || successBool === false || status === 'down' || status === 'unhealthy') {
+      return { state: 'down' }
+    }
+    if (dataStr && (dataStr.includes('up') || dataStr.includes('ok') || dataStr.includes('healthy'))) {
+      return { state: 'healthy' }
+    }
+    if (dataStr && (dataStr.includes('down') || dataStr.includes('unhealthy'))) {
       return { state: 'down' }
     }
 
