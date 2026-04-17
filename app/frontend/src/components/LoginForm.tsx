@@ -1,5 +1,10 @@
-import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState } from 'react'
+import { Lock, Mail, User2, Zap } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { useToast } from '../contexts/ToastContext'
+import { Button } from './ui/Button'
+import { Card, CardContent } from './ui/Card'
+import { Input } from './ui/Input'
 
 interface LoginFormProps {
   onToggleMode: () => void;
@@ -15,6 +20,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, isLogin }) =
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, register } = useAuth();
+  const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,10 +37,22 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, isLogin }) =
 
       if (!result.success) {
         setError(result.error || (isLogin ? 'Invalid email or password' : 'Registration failed'));
+        toast({
+          tone: 'error',
+          title: isLogin ? 'Sign in failed' : 'Sign up failed',
+          description: result.error || 'Please try again.',
+        })
+      } else {
+        toast({
+          tone: 'success',
+          title: isLogin ? 'Welcome back' : 'Account created',
+          description: isLogin ? 'You are now signed in.' : 'You are now signed in.',
+        })
       }
     } catch (error) {
       console.error('[LoginForm] Unexpected error:', error);
       setError('An unexpected error occurred. Please try again.');
+      toast({ tone: 'error', title: 'Something went wrong', description: 'Please try again.' })
     } finally {
       setLoading(false);
     }
@@ -48,131 +66,109 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, isLogin }) =
   };
 
   return (
-    <div className="min-h-screen bg-gradient-hero flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full animate-fade-in">
-        {/* Logo and Branding */}
-        <div className="text-center mb-8">
-          <div className="mx-auto h-16 w-16 bg-white rounded-2xl flex items-center justify-center shadow-lg mb-4">
-            <div className="text-2xl font-bold text-primary-600">⚡</div>
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2">CloudBlitz</h1>
-          <p className="text-primary-100 text-sm">Accelerate your learning journey</p>
-        </div>
-
-        {/* Login Card */}
-        <div className="card p-8 shadow-2xl">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-              {isLogin ? 'Welcome back' : 'Get started'}
-            </h2>
-            <p className="text-gray-600 text-sm">
-              {isLogin ? 'Sign in to continue your learning' : 'Create your account to begin'}
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name
-                </label>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required={!isLogin}
-                  className="input"
-                  placeholder="Enter your full name"
-                  value={formData.name}
-                  onChange={handleChange}
-                />
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+      <div className="relative isolate overflow-hidden">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(60rem_40rem_at_top,rgba(37,99,235,0.25),transparent)] dark:bg-[radial-gradient(60rem_40rem_at_top,rgba(59,130,246,0.18),transparent)]" />
+        <div className="container-page flex min-h-screen items-center justify-center py-12">
+          <div className="w-full max-w-md">
+            <div className="mb-8 flex items-center justify-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-600 text-white shadow-sm">
+                <Zap className="h-6 w-6" aria-hidden="true" />
               </div>
-            )}
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="input"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={handleChange}
-              />
+              <div className="text-left">
+                <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">CloudBlitz</div>
+                <div className="text-sm text-zinc-600 dark:text-zinc-400">Sign in to continue</div>
+              </div>
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="input"
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={handleChange}
-              />
-            </div>
+            <Card className="shadow-lg">
+              <CardContent className="p-8">
+                <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+                  {isLogin ? 'Welcome back' : 'Create your account'}
+                </h1>
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  {isLogin
+                    ? 'Use your email and password to sign in.'
+                    : 'Fill in your details to get started.'}
+                </p>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm text-red-800">{error}</p>
-                  </div>
-                </div>
-              </div>
-            )}
+                <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                  {!isLogin ? (
+                    <Input
+                      name="name"
+                      type="text"
+                      autoComplete="name"
+                      required
+                      label="Full name"
+                      placeholder="Your name"
+                      value={formData.name}
+                      onChange={handleChange}
+                    />
+                  ) : null}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary btn-lg w-full"
-            >
-              {loading ? (
-                <div className="flex items-center">
-                  <div className="spinner h-4 w-4 mr-2"></div>
-                  Please wait...
-                </div>
-              ) : (
-                isLogin ? 'Sign In' : 'Create Account'
-              )}
-            </button>
-          </form>
+                  <Input
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    label="Email"
+                    placeholder="name@company.com"
+                    value={formData.email}
+                    onChange={handleChange}
+                  />
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              {isLogin ? "Don't have an account? " : 'Already have an account? '}
-              <button
-                type="button"
-                onClick={onToggleMode}
-                className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
-              >
-                {isLogin ? 'Sign up' : 'Sign in'}
-              </button>
+                  <Input
+                    name="password"
+                    type="password"
+                    autoComplete={isLogin ? 'current-password' : 'new-password'}
+                    required
+                    label="Password"
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={handleChange}
+                  />
+
+                  {error ? (
+                    <div
+                      className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/40 dark:bg-red-500/10 dark:text-red-200"
+                      role="alert"
+                    >
+                      {error}
+                    </div>
+                  ) : null}
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    isLoading={loading}
+                    leftIcon={
+                      isLogin ? (
+                        <Mail className="h-4 w-4" aria-hidden="true" />
+                      ) : (
+                        <User2 className="h-4 w-4" aria-hidden="true" />
+                      )
+                    }
+                  >
+                    {isLogin ? 'Sign in' : 'Create account'}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    leftIcon={<Lock className="h-4 w-4" aria-hidden="true" />}
+                    onClick={onToggleMode}
+                  >
+                    {isLogin ? 'Create an account' : 'Back to sign in'}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <p className="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
+              © 2024 CloudBlitz. All rights reserved.
             </p>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center mt-8">
-          <p className="text-primary-100 text-xs">
-            © 2024 CloudBlitz. Empowering students worldwide.
-          </p>
         </div>
       </div>
     </div>

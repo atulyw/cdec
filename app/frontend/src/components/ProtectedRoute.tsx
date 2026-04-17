@@ -1,5 +1,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { Button } from './ui/Button'
+import { Card, CardContent } from './ui/Card'
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,7 +13,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div
+          className="h-10 w-10 animate-spin rounded-full border-2 border-zinc-200 border-r-transparent text-brand-600 dark:border-zinc-800"
+          aria-label="Loading"
+          role="status"
+        />
       </div>
     );
   }
@@ -19,16 +25,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
-          <p className="text-gray-600 mb-4">You need to be logged in to access this page.</p>
-          <button
-            onClick={() => window.location.href = '/login'}
-            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
-          >
-            Go to Login
-          </button>
-        </div>
+        <Card className="mx-auto max-w-md">
+          <CardContent className="p-8 text-center">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Access denied</h2>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              You need to be logged in to access this page.
+            </p>
+            <div className="mt-6 flex justify-center">
+              <Button onClick={() => window.location.reload()} variant="primary">
+                Go to login
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

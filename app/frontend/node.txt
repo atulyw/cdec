@@ -1,0 +1,8 @@
+docker run -it -v ./:/app node:20-alpine sh
+cd /app
+npm install 
+npm run build 
+apk update
+apk add aws-cli
+aws s3 ls
+aws s3 cp dist/ s3://bucket-name 

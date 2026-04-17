@@ -1,5 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { courseApi, enrollApi } from '../utils/api';
+import React, { useEffect, useState } from 'react'
+import { GraduationCap, Timer, User2 } from 'lucide-react'
+import { courseApi, enrollApi } from '../utils/api'
+import { Button } from './ui/Button'
+import { Card, CardContent } from './ui/Card'
+import { Skeleton } from './ui/Skeleton'
+import { useToast } from '../contexts/ToastContext'
 
 export interface Course {
   id: string;
@@ -15,6 +20,7 @@ export const CourseList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [enrolling, setEnrolling] = useState<string | null>(null);
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchCourses();
@@ -40,12 +46,12 @@ export const CourseList: React.FC = () => {
     try {
       const response = await enrollApi.post<{ message: string }>('/', { courseId });
       if (response.success) {
-        alert('Successfully enrolled in the course!');
+        toast({ tone: 'success', title: 'Enrollment successful', description: 'You’re enrolled in the course.' })
       } else {
-        alert(response.error || 'Failed to enroll in the course');
+        toast({ tone: 'error', title: 'Enrollment failed', description: response.error || 'Please try again.' })
       }
     } catch (error) {
-      alert('Failed to enroll in the course');
+      toast({ tone: 'error', title: 'Enrollment failed', description: 'Network error. Please try again.' })
     } finally {
       setEnrolling(null);
     }
@@ -58,25 +64,27 @@ export const CourseList: React.FC = () => {
     return '📚';
   };
 
-  const getCourseGradient = (index: number) => {
-    const gradients = [
-      'from-blue-500 to-blue-600',
-      'from-purple-500 to-purple-600',
-      'from-green-500 to-green-600',
-      'from-orange-500 to-orange-600',
-      'from-pink-500 to-pink-600',
-      'from-indigo-500 to-indigo-600'
-    ];
-    return gradients[index % gradients.length];
-  };
-
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="text-center">
-          <div className="spinner h-12 w-12 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading courses...</p>
-        </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i} className="overflow-hidden">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between gap-4">
+                <Skeleton className="h-12 w-12 rounded-xl" />
+                <div className="text-right">
+                  <Skeleton className="h-7 w-16" />
+                  <Skeleton className="mt-2 h-4 w-14" />
+                </div>
+              </div>
+              <Skeleton className="mt-5 h-5 w-3/4" />
+              <Skeleton className="mt-3 h-4 w-full" />
+              <Skeleton className="mt-2 h-4 w-5/6" />
+              <Skeleton className="mt-2 h-4 w-2/3" />
+              <Skeleton className="mt-6 h-10 w-full rounded-lg" />
+            </CardContent>
+          </Card>
+        ))}
       </div>
     );
   }
@@ -84,85 +92,79 @@ export const CourseList: React.FC = () => {
   if (error) {
     return (
       <div className="text-center py-12">
-        <div className="card p-8 max-w-md mx-auto">
-          <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Failed to load courses</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={fetchCourses}
-            className="btn btn-primary btn-md"
-          >
-            Try Again
-          </button>
-        </div>
+        <Card className="mx-auto max-w-md">
+          <CardContent className="p-8">
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+              Failed to load courses
+            </h3>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{error}</p>
+            <div className="mt-6 flex justify-center">
+              <Button onClick={fetchCourses} variant="primary">
+                Try again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-      {courses.map((course, index) => (
-        <div key={course.id} className="card-hover p-6 animate-slide-up" style={{ animationDelay: `${index * 100}ms` }}>
-          {/* Course Header */}
-          <div className="flex items-start justify-between mb-4">
-            <div className={`h-12 w-12 bg-gradient-to-r ${getCourseGradient(index)} rounded-xl flex items-center justify-center text-white text-xl shadow-lg`}>
-              {getCourseIcon(course.title)}
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {courses.map((course) => (
+        <Card
+          key={course.id}
+          className="group overflow-hidden transition-shadow hover:shadow-md"
+        >
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-brand-600 text-white shadow-sm">
+                <span className="text-lg" aria-hidden="true">
+                  {getCourseIcon(course.title)}
+                </span>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+                  ${course.price}
+                </div>
+                <div className="text-xs text-zinc-500 dark:text-zinc-400">One-time</div>
+              </div>
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-gray-900">${course.price}</div>
-              <div className="text-sm text-gray-500">One-time</div>
-            </div>
-          </div>
 
-          {/* Course Content */}
-          <div className="mb-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2">{course.title}</h3>
-            <p className="text-gray-600 text-sm leading-relaxed mb-4 line-clamp-3">{course.description}</p>
-            
-            {/* Course Details */}
-            <div className="space-y-3">
-              <div className="flex items-center text-sm text-gray-500">
-                <svg className="h-4 w-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                <span className="font-medium">Instructor:</span>
-                <span className="ml-1">{course.instructor}</span>
+            <div className="mt-5">
+              <h3 className="line-clamp-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                {course.title}
+              </h3>
+              <p className="mt-2 line-clamp-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                {course.description}
+              </p>
+            </div>
+
+            <div className="mt-4 space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <div className="flex items-center gap-2">
+                <User2 className="h-4 w-4 text-zinc-400" aria-hidden="true" />
+                <span className="font-medium text-zinc-700 dark:text-zinc-300">Instructor:</span>
+                <span className="truncate">{course.instructor}</span>
               </div>
-              <div className="flex items-center text-sm text-gray-500">
-                <svg className="h-4 w-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="font-medium">Duration:</span>
-                <span className="ml-1">{course.duration} hours</span>
+              <div className="flex items-center gap-2">
+                <Timer className="h-4 w-4 text-zinc-400" aria-hidden="true" />
+                <span className="font-medium text-zinc-700 dark:text-zinc-300">Duration:</span>
+                <span>{course.duration} hours</span>
               </div>
             </div>
-          </div>
 
-          {/* Enroll Button */}
-          <button
-            onClick={() => handleEnroll(course.id)}
-            disabled={enrolling === course.id}
-            className="btn btn-primary btn-lg w-full"
-          >
-            {enrolling === course.id ? (
-              <div className="flex items-center justify-center">
-                <div className="spinner h-4 w-4 mr-2"></div>
-                Enrolling...
-              </div>
-            ) : (
-              <div className="flex items-center justify-center">
-                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Enroll Now
-              </div>
-            )}
-          </button>
-        </div>
+            <div className="mt-6">
+              <Button
+                onClick={() => handleEnroll(course.id)}
+                isLoading={enrolling === course.id}
+                className="w-full"
+                leftIcon={<GraduationCap className="h-4 w-4" aria-hidden="true" />}
+              >
+                Enroll
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       ))}
     </div>
   );

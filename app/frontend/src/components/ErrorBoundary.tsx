@@ -1,5 +1,7 @@
 import { Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
+import { Button } from './ui/Button'
+import { Card, CardContent } from './ui/Card'
 
 interface Props {
   children: ReactNode;
@@ -42,54 +44,48 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-md w-full">
-            <div className="card p-8 text-center">
-              <div className="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Something went wrong</h2>
-              <p className="text-gray-600 mb-6">
-                We encountered an unexpected error. This has been logged and we'll look into it.
-              </p>
+        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+          <div className="container-page flex min-h-screen items-center justify-center py-12">
+            <Card className="w-full max-w-lg">
+              <CardContent className="p-8">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                  Something went wrong
+                </h2>
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  We encountered an unexpected error. Try again, or reload the page.
+                </p>
 
-              {process.env.NODE_ENV === 'development' && this.state.error && (
-                <div className="bg-gray-100 rounded-lg p-4 mb-6 text-left">
-                  <h3 className="font-semibold text-gray-900 mb-2">Error Details:</h3>
-                  <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {this.state.error.toString()}
-                  </pre>
-                  {this.state.errorInfo && (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer text-sm font-medium text-gray-700">
-                        Stack Trace
-                      </summary>
-                      <pre className="text-xs text-gray-600 mt-2 whitespace-pre-wrap">
-                        {this.state.errorInfo.componentStack}
-                      </pre>
-                    </details>
-                  )}
+                {import.meta.env.DEV && this.state.error ? (
+                  <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-4 text-left dark:border-zinc-800 dark:bg-zinc-950">
+                    <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                      Error details
+                    </div>
+                    <pre className="mt-2 whitespace-pre-wrap text-xs text-zinc-600 dark:text-zinc-400">
+                      {this.state.error.toString()}
+                    </pre>
+                    {this.state.errorInfo ? (
+                      <details className="mt-3">
+                        <summary className="cursor-pointer text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                          Stack trace
+                        </summary>
+                        <pre className="mt-2 whitespace-pre-wrap text-xs text-zinc-600 dark:text-zinc-400">
+                          {this.state.errorInfo.componentStack}
+                        </pre>
+                      </details>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+                  <Button onClick={this.handleRetry} className="w-full">
+                    Try again
+                  </Button>
+                  <Button onClick={this.handleReload} variant="secondary" className="w-full">
+                    Reload
+                  </Button>
                 </div>
-              )}
-
-              <div className="space-y-3">
-                <button
-                  onClick={this.handleRetry}
-                  className="btn btn-primary btn-md w-full"
-                >
-                  Try Again
-                </button>
-                <button
-                  onClick={this.handleReload}
-                  className="btn btn-ghost btn-md w-full"
-                >
-                  Reload Page
-                </button>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       );
