@@ -4,6 +4,7 @@ metadata:
   name: cloudblitz-api-ingress
   namespace: cloudblitz
   annotations:
+    kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/load-balancer-name: cloudblitz-api-alb
@@ -16,7 +17,6 @@ metadata:
     alb.ingress.kubernetes.io/ssl-redirect: '443'
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:021097241246:certificate/65599c96-c791-44ce-873b-090465c1ea69 #eu-west-1
 spec:
-  ingressClassName: alb
   rules:
   - host: api.thecloudnine.in
     http:
