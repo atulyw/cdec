@@ -27,12 +27,14 @@ export const EnrollmentsTable: React.FC = () => {
   const fetchEnrollments = async () => {
     try {
       const response = await enrollApi.get<Enrollment[]>('/');
+      console.log('[EnrollmentsTable] GET / enroll response:', response)
       if (response.success && response.data) {
         setEnrollments(response.data);
       } else {
         setError(response.error || 'Failed to fetch enrollments');
       }
     } catch (error) {
+      console.error('[EnrollmentsTable] Failed to fetch enrollments:', error)
       setError('Failed to fetch enrollments');
     } finally {
       setLoading(false);

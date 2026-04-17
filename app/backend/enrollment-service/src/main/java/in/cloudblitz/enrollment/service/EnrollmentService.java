@@ -3,6 +3,8 @@ package in.cloudblitz.enrollment.service;
 import in.cloudblitz.enrollment.dto.EnrollmentRequest;
 import in.cloudblitz.enrollment.entity.Enrollment;
 import in.cloudblitz.enrollment.repository.EnrollmentRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -11,11 +13,15 @@ import java.util.List;
 @Service
 public class EnrollmentService {
 
+    private static final Logger log = LoggerFactory.getLogger(EnrollmentService.class);
+
     @Autowired
     private EnrollmentRepository enrollmentRepository;
 
     public List<Enrollment> getUserEnrollments(String userId) {
-        return enrollmentRepository.findByUserId(userId);
+        List<Enrollment> result = enrollmentRepository.findByUserId(userId);
+        log.debug("getUserEnrollments userId={} count={}", userId, result.size());
+        return result;
     }
 
     public Enrollment enrollInCourse(String userId, EnrollmentRequest request) {

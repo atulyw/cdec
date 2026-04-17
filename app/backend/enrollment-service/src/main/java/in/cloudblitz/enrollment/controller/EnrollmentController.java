@@ -7,6 +7,8 @@ import in.cloudblitz.enrollment.service.EnrollmentService;
 import in.cloudblitz.enrollment.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +20,8 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class EnrollmentController {
 
+    private static final Logger log = LoggerFactory.getLogger(EnrollmentController.class);
+
     @Autowired
     private EnrollmentService enrollmentService;
 
@@ -27,24 +31,25 @@ public class EnrollmentController {
     @GetMapping("/")
     public ResponseEntity<ApiResponse<List<Enrollment>>> getUserEnrollments(HttpServletRequest request) {
         try {
-            // Temporarily disable JWT validation for testing
-            // String token = extractTokenFromRequest(request);
-            // if (token == null) {
-            //     return ResponseEntity.badRequest().body(ApiResponse.error("No token provided"));
-            // }
+            String token = extractTokenFromRequest(request);
+            if (token == null) {
+                log.warn("GET /api/enroll/ missing bearer token");
+                return ResponseEntity.badRequest().body(ApiResponse.error("No token provided"));
+            }
 
-            // String email = jwtUtil.extractEmail(token);
-            // if (!jwtUtil.validateToken(token, email)) {
-            //     return ResponseEntity.badRequest().body(ApiResponse.error("Invalid token"));
-            // }
+            String email = jwtUtil.extractEmail(token);
+            if (!jwtUtil.validateToken(token, email)) {
+                log.warn("GET /api/enroll/ invalid token for email={}", email);
+                return ResponseEntity.badRequest().body(ApiResponse.error("Invalid token"));
+            }
 
-            // String userId = jwtUtil.extractUserId(token);
-            // List<Enrollment> enrollments = enrollmentService.getUserEnrollments(userId);
-            
-            // Return empty list for now
-            List<Enrollment> enrollments = List.of();
+            String userId = jwtUtil.extractUserId(token);
+            log.debug("GET /api/enroll/ userId={}", userId);
+            List<Enrollment> enrollments = enrollmentService.getUserEnrollments(userId);
+            log.debug("GET /api/enroll/ userId={} enrollments={}", userId, enrollments.size());
             return ResponseEntity.ok(ApiResponse.success(enrollments));
         } catch (Exception e) {
+            log.error("GET /api/enroll/ failed: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
