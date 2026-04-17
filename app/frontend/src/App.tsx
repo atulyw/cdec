@@ -51,7 +51,11 @@ function App() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18, ease: 'easeOut' }}
             >
-              {currentPage === 'dashboard' ? <DashboardPage /> : <EnrollmentsPage />}
+              {currentPage === 'dashboard' ? (
+                <DashboardPage />
+              ) : (
+                <EnrollmentsPage onBrowseCourses={() => setCurrentPage('dashboard')} />
+              )}
             </motion.div>
           </AnimatePresence>
         </AppLayout>

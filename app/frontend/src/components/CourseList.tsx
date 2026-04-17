@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { GraduationCap, Timer, User2 } from 'lucide-react'
 import { courseApi, enrollApi } from '../utils/api'
+import { formatINR, usdToInr } from '../utils/format'
 import { Button } from './ui/Button'
 import { Card, CardContent } from './ui/Card'
 import { Skeleton } from './ui/Skeleton'
@@ -109,6 +110,40 @@ export const CourseList: React.FC = () => {
     );
   }
 
+  if (courses.length === 0) {
+    return (
+      <Card className="mx-auto max-w-2xl overflow-hidden">
+        <CardContent className="p-0">
+          <div className="grid gap-0 sm:grid-cols-[240px_1fr]">
+            <div className="relative">
+              <img
+                src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=60"
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="h-48 w-full object-cover sm:h-full"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.35),transparent)] sm:bg-[linear-gradient(to_right,rgba(0,0,0,0.35),transparent)]" />
+            </div>
+            <div className="p-8">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                No courses available
+              </h3>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                Courses will appear here once they’re published. Try refreshing in a moment.
+              </p>
+              <div className="mt-6 flex gap-2">
+                <Button onClick={fetchCourses} variant="primary">
+                  Refresh
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {courses.map((course) => (
@@ -116,16 +151,27 @@ export const CourseList: React.FC = () => {
           key={course.id}
           className="group overflow-hidden transition-shadow hover:shadow-md"
         >
+          <div className="relative">
+            <img
+              src={`https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1200&q=60`}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="h-28 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.35),transparent)]" />
+            <div className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-xl bg-white/90 text-zinc-900 shadow-sm backdrop-blur dark:bg-zinc-950/70 dark:text-zinc-50">
+              <span className="text-lg" aria-hidden="true">
+                {getCourseIcon(course.title)}
+              </span>
+            </div>
+          </div>
+
           <CardContent className="p-6">
             <div className="flex items-start justify-between gap-4">
-              <div className="grid h-12 w-12 place-items-center rounded-xl bg-brand-600 text-white shadow-sm">
-                <span className="text-lg" aria-hidden="true">
-                  {getCourseIcon(course.title)}
-                </span>
-              </div>
               <div className="text-right">
                 <div className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-                  ${course.price}
+                  {formatINR(usdToInr(course.price))}
                 </div>
                 <div className="text-xs text-zinc-500 dark:text-zinc-400">One-time</div>
               </div>

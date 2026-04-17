@@ -35,6 +35,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [, setVerifying] = useState(false)
+
+  const USER_STORAGE_KEY = 'user'
 
   useEffect(() => {
     console.log('[AuthContext] Initializing...');
@@ -42,8 +45,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('[AuthContext] Stored token:', storedToken ? 'Present' : 'Not found');
     
     if (storedToken) {
-      // Verify token and get user info
+      const rawUser = localStorage.getItem(USER_STORAGE_KEY)
+      if (rawUser) {
+        try {
+          const parsed = JSON.parse(rawUser) as User
+          if (parsed && typeof parsed === 'object' && 'id' in parsed && 'email' in parsed && 'name' in parsed) {
+            console.log('[AuthContext] Hydrating cached user')
+            setUser(parsed)
+          }
+        } catch {
+          // ignore
+        }
+      }
+      // Verify token and refresh user info (do not auto-logout on transient network errors)
       verifyToken();
+      setLoading(false)
     } else {
       console.log('[AuthContext] No token found, setting loading to false');
       setLoading(false);
@@ -52,6 +68,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const verifyToken = async () => {
     console.log('[AuthContext] Verifying token...');
+    setVerifying(true)
     try {
       const response = await authApi.get<User>('/me');
       console.log('[AuthContext] Token verification response:', response);
@@ -59,18 +76,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.success && response.data) {
         console.log('[AuthContext] Token valid, setting user:', response.data);
         setUser(response.data);
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.data))
         setError(null);
       } else {
         console.log('[AuthContext] Token invalid, removing from storage');
         localStorage.removeItem('token');
+        localStorage.removeItem(USER_STORAGE_KEY)
+        setUser(null)
         setError('Session expired. Please login again.');
       }
     } catch (error) {
       console.error('[AuthContext] Token verification error:', error);
-      localStorage.removeItem('token');
-      setError('Failed to verify session. Please login again.');
+      // IMPORTANT: don't clear token/user on network failures; this causes "random" logouts.
+      // Keep current user session and show a soft error so UI can continue.
+      setError('Network issue while verifying session. You may be offline.');
     } finally {
-      setLoading(false);
+      setVerifying(false)
     }
   };
 
@@ -111,6 +132,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (newToken && userData && typeof userData === 'object' && 'id' in userData && 'email' in userData && 'name' in userData) {
           console.log('[AuthContext] Login successful, storing token and setting user');
           localStorage.setItem('token', newToken);
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData))
           setUser(userData as User);
           setError(null);
           return { success: true };
@@ -150,6 +172,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const { token: newToken, user: userData } = response.data;
         console.log('[AuthContext] Registration successful, storing token and setting user');
         localStorage.setItem('token', newToken);
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData))
         setUser(userData);
         setError(null);
         return { success: true };
@@ -170,6 +193,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     console.log('[AuthContext] Logging out user');
     localStorage.removeItem('token');
+    localStorage.removeItem(USER_STORAGE_KEY)
     setUser(null);
     setError(null);
   };
