@@ -32,12 +32,27 @@ const toneClasses: Record<ToastTone, string> = {
     'border-brand-200 bg-white text-zinc-900 dark:border-brand-500/30 dark:bg-zinc-950 dark:text-zinc-50',
 }
 
+function createToastId() {
+  // `crypto.randomUUID()` isn't available in some older browsers/environments.
+  // Prefer it when present; otherwise fall back to a reasonably-unique ID.
+  const c = globalThis.crypto as Crypto | undefined
+  if (c && 'randomUUID' in c && typeof (c as any).randomUUID === 'function') {
+    return (c as any).randomUUID() as string
+  }
+  if (c?.getRandomValues) {
+    const bytes = new Uint8Array(16)
+    c.getRandomValues(bytes)
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+  }
+  return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`
+}
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = React.useState<Toast[]>([])
 
   const toast = React.useCallback(
     (t: Omit<Toast, 'id'> & { id?: string; durationMs?: number }) => {
-      const id = t.id ?? crypto.randomUUID()
+      const id = t.id ?? createToastId()
       const durationMs = t.durationMs ?? 3500
       setToasts((prev) => [{ id, title: t.title, description: t.description, tone: t.tone }, ...prev].slice(0, 5))
       window.setTimeout(() => {
