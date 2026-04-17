@@ -52,7 +52,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         type={type}
         disabled={isDisabled}
         className={cn(
-          'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors',
+          'inline-flex items-center justify-center gap-2 rounded-lg font-medium',
+          'transition-[transform,colors,box-shadow] duration-200',
+          'active:scale-[0.98] motion-reduce:transform-none',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
           'ring-offset-zinc-50 dark:ring-offset-zinc-950',
           'disabled:pointer-events-none disabled:opacity-50',
