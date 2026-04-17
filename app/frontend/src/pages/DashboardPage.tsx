@@ -1,9 +1,11 @@
 import { BookOpen, Sparkles } from 'lucide-react'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { HealthCard } from '../components/HealthCard'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card'
 import { CourseList } from '../components/CourseList'
 import { useAuth } from '../contexts/AuthContext'
 import { useCountUp } from '../hooks/useCountUp'
+import { useHealthCheck } from '../hooks/useHealthCheck'
 
 const activityData = [
   { day: 'Mon', minutes: 12 },
@@ -23,6 +25,7 @@ export function DashboardPage() {
   const availableN = useCountUp(availableCourses)
   const completedN = useCountUp(completed)
   const inProgressN = useCountUp(inProgress)
+  const { services, refresh } = useHealthCheck({ pollMs: 30_000, timeoutMs: 5_000 })
 
   return (
     <div className="space-y-6">
@@ -132,6 +135,28 @@ export function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Service health</h2>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            Live status from each service’s <span className="font-medium">/health</span> endpoint.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          className="rounded-xl border border-white/60 bg-white/70 px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm backdrop-blur hover:bg-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-white/10 dark:bg-zinc-950/60 dark:text-zinc-100 dark:hover:bg-zinc-950/70"
+        >
+          Refresh
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {services.map((s) => (
+          <HealthCard key={s.key} service={s} />
+        ))}
+      </div>
 
       <div className="flex items-end justify-between gap-4">
         <div>
