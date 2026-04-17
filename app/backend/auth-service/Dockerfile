@@ -1,11 +1,9 @@
-FROM eclipse-temurin:21-jdk-jammy
+# ---------- Stage 1: Build ----------
+FROM maven:3.9.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
-# Install Maven
-RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
-
-# Copy Maven files
+# Copy pom.xml first (better caching)
 COPY pom.xml .
 
 # Download dependencies
@@ -14,9 +12,18 @@ RUN mvn dependency:go-offline -B
 # Copy source code
 COPY src ./src
 
-# Build the application
+# Build jar
 RUN mvn clean package -DskipTests
 
-# Run the application
+
+# ---------- Stage 2: Runtime ----------
+FROM eclipse-temurin:21-jdk-jammy
+
+WORKDIR /app
+
+# Copy only the built jar from builder stage
+COPY --from=builder /app/target/auth-service-1.0.0.jar app.jar
+
 EXPOSE 8081
-CMD ["java", "-jar", "target/auth-service-1.0.0.jar"]
+
+CMD ["java", "-jar", "app.jar"]
