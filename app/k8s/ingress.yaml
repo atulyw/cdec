@@ -19,6 +19,7 @@ spec:
   ingressClassName: alb
   rules:
   - host: api.thecloudnine.in
+    http:
       paths:
       - path: /api/auth
         pathType: Prefix
