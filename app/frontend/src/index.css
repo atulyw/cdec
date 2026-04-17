@@ -11,6 +11,14 @@
   --color-brand-700: #1d4ed8;
   --color-brand-800: #1e40af;
   --color-brand-900: #1e3a8a;
+
+  --color-neon-blue: #39a0ff;
+  --color-neon-purple: #b84bff;
+  --color-neon-green: #22ff99;
+  --color-neon-red: #ff375f;
+
+  --color-gbg-1: #05070d;
+  --color-gbg-2: #0b0f19;
 }
 
 @layer base {
@@ -23,11 +31,17 @@
   }
 
   body {
-    @apply bg-zinc-50 text-zinc-900 antialiased;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    @apply text-zinc-900 antialiased;
   }
 
   html.dark body {
-    @apply bg-zinc-950 text-zinc-100;
+    @apply text-zinc-100;
+    background:
+      radial-gradient(900px 520px at 20% -10%, rgba(57,160,255,0.18), transparent 60%),
+      radial-gradient(740px 460px at 90% 10%, rgba(184,75,255,0.16), transparent 62%),
+      radial-gradient(760px 520px at 70% 110%, rgba(34,255,153,0.10), transparent 60%),
+      linear-gradient(180deg, var(--color-gbg-2), var(--color-gbg-1));
   }
 
   ::selection {
@@ -50,5 +64,10 @@
 @layer components {
   .container-page {
     @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .text-display {
+    font-family: Orbitron, Inter, ui-sans-serif, system-ui;
+    letter-spacing: 0.02em;
   }
 }
