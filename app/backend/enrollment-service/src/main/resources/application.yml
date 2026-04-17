@@ -11,6 +11,10 @@ spring:
 jwt:
   secret: ${JWT_SECRET:CloudBlitzJWTSecretKeyForSecureAuthentication2024!@#}
 
+course:
+  service:
+    url: ${COURSE_SERVICE_URL:http://localhost:8082/api/courses}
+
 logging:
   level:
     in.cloudblitz.enrollment: DEBUG
