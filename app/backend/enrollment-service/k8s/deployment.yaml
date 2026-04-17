@@ -19,35 +19,6 @@ spec:
     spec:
       containers:
       - name: enrollment-service
-        image: cloudblitz/enrollment-service:latest
+        image: 021097241246.dkr.ecr.eu-west-1.amazonaws.com/enrollment-service:latest
         ports:
         - containerPort: 8083
-        env:
-        - name: MONGO_URI
-          value: "mongodb+srv://atulyw:R8RfzxlNDb6Z68pe@cdec-dev.et2yiaw.mongodb.net/cb_enrollments?retryWrites=true&w=majority&appName=cdec-dev"
-        - name: JWT_SECRET
-          value: "CloudBlitzJWTSecretKeyForSecureAuthentication2024!@#"
-        - name: SERVER_PORT
-          value: "8083"
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /api/enroll/health
-            port: 8083
-          initialDelaySeconds: 60
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /api/enroll/health
-            port: 8083
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        imagePullPolicy: Always
-      restartPolicy: Always
-

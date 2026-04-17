@@ -19,34 +19,6 @@ spec:
     spec:
       containers:
       - name: auth-service
-        image: cloudblitz/auth-service:latest
+        image: 021097241246.dkr.ecr.eu-west-1.amazonaws.com/auth-service:latest
         ports:
         - containerPort: 8081
-        env:
-        - name: MONGO_URI
-          value: "mongodb+srv://atulyw:R8RfzxlNDb6Z68pe@cdec-dev.et2yiaw.mongodb.net/cb_auth?retryWrites=true&w=majority&appName=cdec-dev"
-        - name: JWT_SECRET
-          value: "CloudBlitzJWTSecretKeyForSecureAuthentication2024!@#"
-        - name: SERVER_PORT
-          value: "8081"
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /api/auth/health
-            port: 8081
-          initialDelaySeconds: 60
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /api/auth/health
-            port: 8081
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        imagePullPolicy: Always
-      restartPolicy: Always

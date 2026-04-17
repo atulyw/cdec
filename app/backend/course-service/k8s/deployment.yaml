@@ -19,33 +19,6 @@ spec:
     spec:
       containers:
       - name: course-service
-        image: cloudblitz/course-service:latest
+        image: 021097241246.dkr.ecr.eu-west-1.amazonaws.com/course-service:latest
         ports:
         - containerPort: 8082
-        env:
-        - name: MONGO_URI
-          value: "mongodb+srv://atulyw:R8RfzxlNDb6Z68pe@cdec-dev.et2yiaw.mongodb.net/cb_courses?retryWrites=true&w=majority&appName=cdec-dev"
-        - name: SERVER_PORT
-          value: "8082"
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /api/courses/health
-            port: 8082
-          initialDelaySeconds: 60
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /api/courses/health
-            port: 8082
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        imagePullPolicy: Always
-      restartPolicy: Always
-
