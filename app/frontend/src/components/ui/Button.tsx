@@ -46,13 +46,29 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const isDisabled = disabled || isLoading
+    const [ripples, setRipples] = React.useState<Array<{ id: string; x: number; y: number }>>(
+      [],
+    )
+
     return (
       <button
         ref={ref}
         type={type}
         disabled={isDisabled}
+        onPointerDown={(e) => {
+          props.onPointerDown?.(e)
+          if (isDisabled) return
+          const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+          const x = e.clientX - rect.left
+          const y = e.clientY - rect.top
+          const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`
+          setRipples((prev) => [...prev, { id, x, y }].slice(-3))
+          window.setTimeout(() => {
+            setRipples((prev) => prev.filter((r) => r.id !== id))
+          }, 520)
+        }}
         className={cn(
-          'inline-flex items-center justify-center gap-2 rounded-lg font-medium',
+          'relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-lg font-medium',
           'transition-[transform,colors,box-shadow] duration-200',
           'active:scale-[0.98] motion-reduce:transform-none',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
@@ -64,6 +80,19 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         {...props}
       >
+        {ripples.map((r) => (
+          <span
+            key={r.id}
+            className={cn(
+              'pointer-events-none absolute h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full',
+              'bg-white/40 dark:bg-white/20',
+              'animate-[ripple_520ms_ease-out]',
+              variant === 'secondary' || variant === 'ghost' ? 'mix-blend-multiply dark:mix-blend-screen' : '',
+            )}
+            style={{ left: r.x, top: r.y }}
+            aria-hidden="true"
+          />
+        ))}
         {isLoading ? (
           <span
             className={cn(
@@ -79,6 +108,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         <span>{children}</span>
         {!isLoading ? rightIcon : null}
+        <style>{`@keyframes ripple { from { transform: translate(-50%,-50%) scale(0.2); opacity: 0.6 } to { transform: translate(-50%,-50%) scale(6); opacity: 0 } }`}</style>
       </button>
     )
   },

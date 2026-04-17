@@ -44,6 +44,12 @@ const stateMeta = {
 export function HealthCard({ service }: { service: ServiceHealth }) {
   const meta = stateMeta[service.state]
   const Icon = meta.icon
+  const shine =
+    service.state === 'healthy'
+      ? { color: 'rgba(16,185,129,0.9)', duration: 2.4, opacity: 1 }
+      : service.state === 'down'
+        ? { color: 'rgba(239,68,68,0.85)', duration: 5.2, opacity: 0.7 }
+        : { color: 'rgba(99,102,241,0.0)', duration: 6, opacity: 0 }
 
   return (
     <motion.div
@@ -59,12 +65,44 @@ export function HealthCard({ service }: { service: ServiceHealth }) {
       animate={
         service.state === 'down'
           ? { x: [0, -2, 2, -1, 1, 0] }
-          : service.state === 'healthy'
-            ? { boxShadow: undefined }
-            : undefined
+          : undefined
       }
     >
       <div className="absolute inset-0 bg-[radial-gradient(32rem_16rem_at_top,rgba(37,99,235,0.12),transparent)] dark:bg-[radial-gradient(32rem_16rem_at_top,rgba(59,130,246,0.10),transparent)]" />
+
+      {/* Shine track */}
+      <div className="pointer-events-none absolute inset-x-4 top-3 h-10 overflow-hidden rounded-2xl">
+        <div className="absolute inset-x-0 top-0 h-px bg-zinc-200/70 dark:bg-white/10" />
+        <motion.span
+          className="absolute top-[-12px] h-8 w-8 rounded-full blur-[2px]"
+          style={{
+            background: `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.95), ${shine.color} 55%, transparent 70%)`,
+            opacity: shine.opacity,
+          }}
+          initial={{ x: -24 }}
+          animate={{ x: ['-24px', 'calc(100% + 24px)'] }}
+          transition={{
+            duration: shine.duration,
+            repeat: Infinity,
+            ease: 'linear',
+          }}
+        />
+        <motion.span
+          className="absolute top-[-20px] h-12 w-12 rounded-full blur-[10px]"
+          style={{
+            background: shine.color,
+            opacity: service.state === 'healthy' ? 0.18 : service.state === 'down' ? 0.12 : 0,
+          }}
+          initial={{ x: -36 }}
+          animate={{ x: ['-36px', 'calc(100% + 36px)'] }}
+          transition={{
+            duration: shine.duration,
+            repeat: Infinity,
+            ease: 'linear',
+            delay: 0.02,
+          }}
+        />
+      </div>
 
       <div className="relative flex items-start justify-between gap-4">
         <div className="min-w-0">
