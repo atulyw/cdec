@@ -105,25 +105,25 @@ export const CourseList: React.FC = () => {
 
   if (courses.length === 0) {
     return (
-      <Card className="mx-auto max-w-2xl overflow-hidden">
-        <CardContent className="p-0">
-          <div className="grid gap-0 sm:grid-cols-[240px_1fr]">
+      <div className="mx-auto max-w-3xl rounded-2xl bg-[linear-gradient(135deg,rgba(57,160,255,0.70),rgba(184,75,255,0.55),rgba(34,255,153,0.35))] p-px">
+        <div className="overflow-hidden rounded-[15px] border border-white/10 bg-zinc-950/70 backdrop-blur-xl">
+          <div className="grid gap-0 sm:grid-cols-[260px_1fr]">
             <div className="relative">
               <img
-                src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=60"
+                src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=900&q=70"
                 alt=""
                 loading="lazy"
                 decoding="async"
-                className="h-48 w-full object-cover sm:h-full"
+                className="h-52 w-full object-cover opacity-90 sm:h-full"
               />
-              <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.35),transparent)] sm:bg-[linear-gradient(to_right,rgba(0,0,0,0.35),transparent)]" />
+              <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(5,7,13,0.92),transparent)] sm:bg-[linear-gradient(to_right,rgba(5,7,13,0.92),transparent)]" />
             </div>
             <div className="p-8">
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              <h3 className="text-display text-lg font-semibold text-zinc-50">
                 No courses available
               </h3>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                Courses will appear here once they’re published. Try refreshing in a moment.
+              <p className="mt-2 text-sm text-zinc-300/80">
+                Courses will appear here once they’re published. Refresh to re-check the catalog.
               </p>
               <div className="mt-6 flex gap-2">
                 <Button onClick={fetchCourses} variant="primary">
@@ -132,14 +132,14 @@ export const CourseList: React.FC = () => {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   return (
     <motion.div
-      className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+      className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
       initial="hidden"
       animate="show"
       variants={{
