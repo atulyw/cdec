@@ -15,7 +15,7 @@ metadata:
     alb.ingress.kubernetes.io/unhealthy-threshold-count: '3'
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:021097241246:certificate/39933de6-e7d1-41e2-80cc-f6ad2d6851e2 #eu-west-1
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:271376211486:certificate/7bf255fe-d0e2-41ef-a01a-17b214d74120 #eu-west-1
 spec:
   rules:
   - host: api.thecloudnine.in
