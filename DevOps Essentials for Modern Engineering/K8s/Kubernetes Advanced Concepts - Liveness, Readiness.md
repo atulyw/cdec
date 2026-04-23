@@ -18,6 +18,51 @@ Kubernetes uses probes to determine the health and readiness of containers. Ther
 - **Readiness Probe**: Determines if a container is ready to serve traffic
 - **Startup Probe**: Determines if the application has successfully started
 
+In Kubernetes, **probes** are diagnostic checks performed by the kubelet to monitor the health of containers. The main differences are what happens when a probe fails and when each probe runs during the container lifecycle.
+
+### Comparison at a Glance
+
+| Feature | Startup Probe | Readiness Probe | Liveness Probe |
+|--------|-----------------|-----------------|----------------|
+| Primary Goal | Check if the app has finished booting | Check if the app can serve traffic | Check if the app is still healthy |
+| Action on Failure | Restarts the container | Stops sending traffic to the pod | Restarts the container |
+| When it Runs | During startup (until success or failure threshold) | Throughout the entire lifecycle | Throughout the entire lifecycle |
+| Precedence | Disables other probes until it passes | Runs alongside Liveness | Runs alongside Readiness |
+
+### 🚀 Startup Probe
+
+The startup probe is designed for slow-starting applications (for example, legacy Java applications or workloads that preload large datasets).
+
+**How it works:** It acts as a shield. While it has not yet succeeded, the kubelet does not run liveness or readiness probes on that container.
+
+**Why use it:** Without it, an aggressive liveness probe might kill a slow-starting app before it finishes initializing.
+
+**Failure result:** After repeated failures (per `failureThreshold`), Kubernetes kills and restarts the container.
+
+### 🚦 Readiness Probe
+
+The readiness probe determines if your container is ready to accept user requests.
+
+**How it works:** If the probe fails, the pod's IP is removed from the EndpointSlice of any matching Services (the pod is taken out of service endpoints).
+
+**Why use it:** It helps avoid routing errors during application warm-up or temporary downtime (for example, after losing a database connection).
+
+**Failure result:** The container keeps running, but no new traffic is sent to it.
+
+### ❤️ Liveness Probe
+
+The liveness probe checks if your container is functioning correctly over time.
+
+**How it works:** It can catch deadlocks or cases where the process is running but stuck and unresponsive.
+
+**Why use it:** It provides self-healing by restarting containers that have entered an unrecoverable state.
+
+**Failure result:** Kubernetes restarts the container.
+
+### 💡 Best practice
+
+Use a **startup probe** for slow boots, a **readiness probe** for traffic management (including external dependencies), and a **liveness probe** only for internal unrecoverable hangs.
+
 ### Readiness Probes
 
 #### Definition and Purpose
@@ -67,8 +112,8 @@ Startup probes are used for applications that need a longer time to start for th
 
 #### Key Characteristics
 - **Purpose**: Determines if the application has successfully started
-- **When it runs**: Before liveness/readiness probes, then stops after success
-- **Action on failure**: Keep container running, continue checking (no restart)
+- **When it runs**: Before liveness/readiness probes take effect; stops after success
+- **Action on failure**: After `failureThreshold` consecutive failures, the kubelet kills and restarts the container (subject to the pod's restart policy)
 - **Use cases**:
   - Slow-starting applications (Java applications, large applications)
   - Applications with complex initialization processes
@@ -77,8 +122,8 @@ Startup probes are used for applications that need a longer time to start for th
 
 #### Startup Probe Behavior
 - **Success**: Startup probe stops, liveness/readiness probes begin
-- **Failure**: Container continues running, startup probe continues checking
-- **No restart**: Startup probe failures don't cause container restarts
+- **Failure (below threshold)**: Container keeps running; startup probe keeps checking; liveness/readiness stay disabled
+- **Failure (at threshold)**: Kubelet kills the container; the container is recreated per the restart policy
 - **Transition**: Once startup succeeds, normal probe behavior resumes
 
 ### Probe Interaction and Lifecycle
@@ -115,10 +160,8 @@ All Probes Run Periodically
 - Probes continue checking
 
 **Startup Probe Failure**:
-- Container continues running
-- Liveness/readiness probes are disabled
-- Startup probe continues checking
-- No restart occurs
+- Below `failureThreshold`: container continues running; liveness/readiness probes stay disabled; startup probe keeps checking
+- At `failureThreshold`: kubelet kills and restarts the container (same overall outcome as a failed liveness probe)
 
 ### Probe Types
 
