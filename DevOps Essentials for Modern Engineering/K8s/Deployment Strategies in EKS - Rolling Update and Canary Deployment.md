@@ -2,11 +2,14 @@
 
 ## Table of Contents
 1. [Introduction to Deployment Strategies](#introduction-to-deployment-strategies)
-2. [Rolling Update Deployment](#rolling-update-deployment)
-3. [Canary Deployment](#canary-deployment)
-4. [Comparison and Best Practices](#comparison-and-best-practices)
-5. [Advanced Examples](#advanced-examples)
-6. [Troubleshooting and Monitoring](#troubleshooting-and-monitoring)
+2. [Quick Reference (Recreate, Rolling, Blue-Green, Canary)](#quick-reference-recreate-rolling-blue-green-canary)
+3. [Recreate Deployment](#recreate-deployment)
+4. [Rolling Update Deployment](#rolling-update-deployment)
+5. [Blue-Green Deployment](#blue-green-deployment)
+6. [Canary Deployment](#canary-deployment)
+7. [Comparison and Best Practices](#comparison-and-best-practices)
+8. [Advanced Examples](#advanced-examples)
+9. [Troubleshooting and Monitoring](#troubleshooting-and-monitoring)
 
 ---
 
@@ -24,6 +27,114 @@ Deployment strategies in Kubernetes determine how new versions of applications a
 2. **Canary Deployment** - Testing new version with a small subset of users
 3. **Blue-Green Deployment** - Complete switch between two environments
 4. **Recreate** - Delete all old pods before creating new ones
+
+---
+
+## Quick Reference (Recreate, Rolling, Blue-Green, Canary)
+
+Use this section as a fast mental model + copy/paste baseline YAML. Later sections go deeper into EKS/Kubernetes best practices, monitoring, and automation.
+
+### Recreate (downtime)
+
+- **Behavior**: Kill all old Pods, then create new Pods
+- **When**: Non-HA workloads, or when you must avoid running old+new together (e.g., incompatible schema)
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recreate-deployment
+spec:
+  replicas: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+        - name: myapp
+          image: nginx:1.25
+          ports:
+            - containerPort: 80
+```
+
+### RollingUpdate (default, gradual)
+
+- **Behavior**: Replace Pods gradually
+- **Key knobs**: `maxUnavailable`, `maxSurge`
+
+```yaml
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 1
+```
+
+### Blue-Green (instant cutover)
+
+- **Behavior**: Two Deployments (blue/green), **one Service** switches selectors
+- **When**: You want instant cutover + easy rollback
+
+```bash
+kubectl patch service my-service -p '{"spec":{"selector":{"app":"myapp","version":"green"}}}'
+```
+
+### Canary (small % of traffic first)
+
+- **Behavior**: Stable + canary Deployments behind one Service; traffic roughly follows **ready Pod ratio**
+- **When**: Reduce blast radius and watch metrics before full rollout
+
+```bash
+# Example: move from ~10% to ~30% canary (pod-ratio based)
+kubectl scale deployment canary-deployment --replicas=3
+kubectl scale deployment stable-deployment --replicas=7
+```
+
+---
+
+## Recreate Deployment
+
+### What is Recreate?
+
+Recreate is the simplest strategy: Kubernetes **terminates all old Pods** and then **creates the new Pods**.
+
+### What happens?
+
+- All old Pods are killed first
+- Then new Pods are created
+- **Downtime occurs** during the gap
+
+### Example
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recreate-deployment
+spec:
+  replicas: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+        - name: myapp
+          image: nginx:1.25
+          ports:
+            - containerPort: 80
+```
 
 ---
 
@@ -288,87 +399,6 @@ spec:
   type: ClusterIP
 ```
 
-#### Method 2: Using Service Mesh (Istio)
-
-```yaml
-# Virtual Service for traffic splitting
-apiVersion: networking.istio.io/v1alpha3
-kind: VirtualService
-metadata:
-  name: webapp-vs
-spec:
-  hosts:
-  - webapp.example.com
-  http:
-  - route:
-    - destination:
-        host: webapp-stable
-        subset: v1
-      weight: 90
-    - destination:
-        host: webapp-canary
-        subset: v2
-      weight: 10
----
-# Destination Rules
-apiVersion: networking.istio.io/v1alpha3
-kind: DestinationRule
-metadata:
-  name: webapp-dr
-spec:
-  host: webapp
-  subsets:
-  - name: v1
-    labels:
-      version: stable
-  - name: v2
-    labels:
-      version: canary
-```
-
-#### Method 3: Using Nginx Ingress Controller
-
-```yaml
-# Ingress with traffic splitting
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: webapp-ingress
-  annotations:
-    nginx.ingress.kubernetes.io/canary: "true"
-    nginx.ingress.kubernetes.io/canary-weight: "10"
-spec:
-  rules:
-  - host: webapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: webapp-service
-            port:
-              number: 80
----
-# Main Ingress (90% traffic)
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: webapp-ingress-main
-spec:
-  rules:
-  - host: webapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: webapp-service
-            port:
-              number: 80
-```
-
 ### Advanced Canary Deployment Example:
 
 #### Step 1: Create Base Application
@@ -517,166 +547,6 @@ spec:
   - port: 80
     targetPort: 8080
   type: ClusterIP
----
-# Ingress with traffic splitting
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: webapp-ingress
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  rules:
-  - host: webapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: webapp-service-stable
-            port:
-              number: 80
-```
-
-### Canary Deployment Monitoring:
-
-#### 1. Prometheus Metrics
-```yaml
-# prometheus-config.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: prometheus-config
-data:
-  prometheus.yml: |
-    global:
-      scrape_interval: 15s
-    scrape_configs:
-    - job_name: 'webapp'
-      static_configs:
-      - targets: ['webapp-service:80']
-      metrics_path: /metrics
-```
-
-#### 2. Grafana Dashboard
-```json
-{
-  "dashboard": {
-    "title": "Canary Deployment Metrics",
-    "panels": [
-      {
-        "title": "Request Rate by Version",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "rate(http_requests_total{version=\"base\"}[5m])",
-            "legendFormat": "Stable Version"
-          },
-          {
-            "expr": "rate(http_requests_total{version=\"canary\"}[5m])",
-            "legendFormat": "Canary Version"
-          }
-        ]
-      },
-      {
-        "title": "Error Rate by Version",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "rate(http_requests_total{version=\"base\", status=~\"5..\"}[5m])",
-            "legendFormat": "Stable Errors"
-          },
-          {
-            "expr": "rate(http_requests_total{version=\"canary\", status=~\"5..\"}[5m])",
-            "legendFormat": "Canary Errors"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### Canary Deployment Automation:
-
-#### 1. Automated Canary Analysis
-```yaml
-# canary-analysis.yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Rollout
-metadata:
-  name: webapp-rollout
-spec:
-  replicas: 10
-  strategy:
-    canary:
-      steps:
-      - setWeight: 10
-      - pause: {duration: 5m}
-      - setWeight: 20
-      - pause: {duration: 5m}
-      - setWeight: 50
-      - pause: {duration: 5m}
-      - setWeight: 100
-  selector:
-    matchLabels:
-      app: webapp
-  template:
-    metadata:
-      labels:
-        app: webapp
-    spec:
-      containers:
-      - name: webapp
-        image: myapp:v1.1
-        ports:
-        - containerPort: 8080
-```
-
-#### 2. Canary Deployment Script
-```bash
-#!/bin/bash
-# canary-deploy.sh
-
-# Configuration
-CANARY_REPLICAS=1
-STABLE_REPLICAS=9
-CANARY_IMAGE="myapp:v1.1"
-STABLE_IMAGE="myapp:v1.0"
-NAMESPACE="default"
-
-echo "Starting Canary Deployment..."
-
-# Deploy canary version
-kubectl apply -f webapp-canary.yaml
-
-# Wait for canary to be ready
-echo "Waiting for canary deployment to be ready..."
-kubectl rollout status deployment/webapp-canary -n $NAMESPACE
-
-# Monitor canary for 5 minutes
-echo "Monitoring canary deployment for 5 minutes..."
-sleep 300
-
-# Check canary health
-CANARY_HEALTH=$(kubectl get pods -l app=webapp,version=canary -n $NAMESPACE --no-headers | grep Running | wc -l)
-
-if [ $CANARY_HEALTH -eq $CANARY_REPLICAS ]; then
-    echo "Canary is healthy. Proceeding with full deployment..."
-    
-    # Scale up canary
-    kubectl scale deployment webapp-canary --replicas=10 -n $NAMESPACE
-    
-    # Scale down stable
-    kubectl scale deployment webapp-base --replicas=0 -n $NAMESPACE
-    
-    echo "Canary deployment completed successfully!"
-else
-    echo "Canary health check failed. Rolling back..."
-    kubectl delete deployment webapp-canary -n $NAMESPACE
-    echo "Rollback completed."
-fi
 ```
 
 ---
@@ -843,76 +713,6 @@ spec:
   type: ClusterIP
 ```
 
-### 2. Progressive Canary with Istio
-
-```yaml
-# progressive-canary.yaml
-apiVersion: networking.istio.io/v1alpha3
-kind: VirtualService
-metadata:
-  name: webapp-vs
-spec:
-  hosts:
-  - webapp.example.com
-  http:
-  - route:
-    - destination:
-        host: webapp-stable
-        subset: v1
-      weight: 90
-    - destination:
-        host: webapp-canary
-        subset: v2
-      weight: 10
----
-apiVersion: networking.istio.io/v1alpha3
-kind: DestinationRule
-metadata:
-  name: webapp-dr
-spec:
-  host: webapp
-  subsets:
-  - name: v1
-    labels:
-      version: stable
-  - name: v2
-    labels:
-      version: canary
----
-# Progressive traffic shifting
-apiVersion: argoproj.io/v1alpha1
-kind: Rollout
-metadata:
-  name: webapp-progressive
-spec:
-  replicas: 10
-  strategy:
-    canary:
-      steps:
-      - setWeight: 5
-      - pause: {duration: 2m}
-      - setWeight: 10
-      - pause: {duration: 2m}
-      - setWeight: 20
-      - pause: {duration: 2m}
-      - setWeight: 50
-      - pause: {duration: 2m}
-      - setWeight: 100
-  selector:
-    matchLabels:
-      app: webapp
-  template:
-    metadata:
-      labels:
-        app: webapp
-    spec:
-      containers:
-      - name: webapp
-        image: myapp:v1.1
-        ports:
-        - containerPort: 8080
-```
-
 ---
 
 ## Troubleshooting and Monitoring
@@ -947,18 +747,6 @@ kubectl get endpoints webapp-service
 
 # Test canary endpoint directly
 kubectl port-forward svc/webapp-service-canary 8080:80
-```
-
-#### 3. Traffic Routing Issues
-```bash
-# Check ingress status
-kubectl describe ingress webapp-ingress
-
-# Check service selectors
-kubectl get svc -o wide
-
-# Test traffic splitting
-curl -H "Host: webapp.example.com" http://localhost/version
 ```
 
 ### Monitoring Commands:
