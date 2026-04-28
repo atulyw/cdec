@@ -123,29 +123,6 @@ Meaning:
 
 - HPA tries to drive **average memory utilization** toward **80%** (relative to each Pod’s memory **request**, when requests exist).
 
-### HPA metrics types overview (`autoscaling/v2`)
-
-HPA can scale on different *kinds* of signals. In YAML, each signal is an entry under `spec.metrics[]` with a `type`.
-
-| Metric type | What it measures | Example | When to use | Source required |
-|---|---|---|---|---|
-| **Resource** | **CPU / memory** usage for the workload’s Pods | Target average CPU **70%** | Default “infra-style” autoscaling | **Metrics Server** (Metrics API: `metrics.k8s.io`) |
-| **Pods** | A **custom metric** value, aggregated **per Pod** (then averaged across selected Pods) | **HTTP requests per second per pod** | Scale on **app-level** signals (QPS, latency proxies, etc.) | **Custom Metrics API** (`custom.metrics.k8s.io`) + an adapter (commonly Prometheus-Adapter) |
-| **Object** | A custom metric attached to a **Kubernetes object** (not “per pod” by default) | “RPS” metric associated with an **`Ingress`** object | Traffic-based scaling when the best signal is an **object-level** metric | **Custom Metrics API** + adapter |
-| **External** | A metric from **outside** the workload’s Pods (cluster-external or system-level) | **Queue depth**, **Kafka consumer lag** | **Event-driven** scaling / backlog-driven scaling | **External Metrics API** (`external.metrics.k8s.io`) + adapter |
-
-#### How to read this table in practice
-
-- **Resource metrics** are the “batteries included” path: CPU/memory from **metrics-server**. This is what your `basic-hpa.yaml` uses.
-- **Pods / Object / External** are **advanced** paths: they require additional Kubernetes API surfaces (`custom.metrics.k8s.io`, `external.metrics.k8s.io`) and something that **publishes** those metrics (often Prometheus + adapter, or a cloud vendor integration).
-
-#### Interview-style mental model
-
-- **Resource**: “Are my Pods *compute/memory* saturated?”
-- **Pods**: “Is each Pod handling too much *application load*?”
-- **Object**: “Is a *specific Kubernetes object* (like an Ingress) seeing too much load?”
-- **External**: “Is there *backpressure* in an external system (queue/lag) I need more consumers for?”
-
 ### Multiple metrics: “highest demand wins”
 
 When you list multiple metrics, HPA effectively behaves like **OR / worst-case planning**:
@@ -433,6 +410,25 @@ You should see CPU/memory rise on `myapp-*` pods while load runs.
 - **Metrics Server / Metrics API missing** → no usable resource metrics
 - **Load too low / too short** → no sustained signal
 - **Stabilization + policies** → changes can look “delayed”, especially scale-down
+
+---
+
+## HPA metrics types overview
+
+| Metric type | What it measures | Example | When to use | Source required |
+|---|---|---|---|---|
+| **Resource** | CPU / memory usage per Pod (aggregated/averaged for the target workload) | CPU average utilization = **70%** | Default autoscaling on node resources | **Metrics Server** (Metrics API: `metrics.k8s.io`) |
+| **Pods** | A **custom metric** interpreted **per Pod** (then averaged across Pods) | Requests per second **per pod** | Scale on app signals that map cleanly to “per replica” | **Custom Metrics API** (`custom.metrics.k8s.io`) + adapter (often Prometheus Adapter) |
+| **Object** | A custom metric tied to a **Kubernetes object** (e.g., Ingress) | Ingress **requests/sec** | Traffic-based scaling when the signal is naturally “object scoped” | **Custom Metrics API** (`custom.metrics.k8s.io`) + adapter |
+| **External** | A metric **not** tied to Kubernetes objects (external systems) | Queue depth, **Kafka consumer lag** | Event-driven / off-cluster signals | **External Metrics API** (`external.metrics.k8s.io`) + adapter |
+
+### Explanatory notes (read this once, remember forever)
+
+- **Resource metrics are the “batteries included” path**: they come from **metrics-server** and work for CPU/memory targets like `averageUtilization`. For CPU/memory utilization, you usually want consistent **`resources.requests`** on your containers.
+- **Pods metrics are for app-level scaling**, but the metric must be published in a way the control plane can query via the **custom metrics pipeline** (not just Prometheus UI). HPA then reasons about it **per Pod**.
+- **Object metrics are useful when the signal is naturally attached to an object** (Ingress, Service, etc.). You still need the **custom metrics** stack to expose that metric to Kubernetes.
+- **External metrics are for “outside Kubernetes” signals** (SQS, Kafka, cloud metrics). These require the **external metrics** stack; HPA references the metric by name/selector and scales off that value.
+- **Practical rule**: if you’re not running Prometheus Adapter / a metrics adapter and enabling those APIs, stick to **Resource** metrics only.
 
 ---
 
