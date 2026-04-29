@@ -47,21 +47,16 @@ apt update -y && apt upgrade -y || print_error "System update"
 print_success "System updated"
 
 # ===============================
-# 🐳 Install Docker (Latest)
+# 🐳 Install Docker
 # ===============================
 print_header "Installing Docker"
 
-print_step "Removing old Docker versions"
 apt remove -y docker docker-engine docker.io containerd runc || true
+apt install -y ca-certificates curl gnupg lsb-release unzip git
 
-print_step "Installing dependencies"
-apt install -y ca-certificates curl gnupg lsb-release
-
-print_step "Adding Docker GPG key"
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
-print_step "Setting up repository"
 echo \
   "deb [arch=$(dpkg --print-architecture) \
   signed-by=/etc/apt/keyrings/docker.gpg] \
@@ -69,30 +64,23 @@ echo \
   $(lsb_release -cs) stable" \
   > /etc/apt/sources.list.d/docker.list
 
-print_step "Installing Docker Engine"
 apt update -y
 apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-print_step "Starting Docker"
 systemctl enable docker
 systemctl start docker
 
 print_success "Docker installed"
 
 # ===============================
-# ☸️ Install kubectl (Latest)
+# ☸️ Install kubectl
 # ===============================
 print_header "Installing kubectl"
 
-print_step "Fetching latest version"
 KUBECTL_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt)
 
-print_step "Downloading kubectl $KUBECTL_VERSION"
 curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
-
-print_step "Installing kubectl"
 install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-
 rm kubectl
 
 print_success "kubectl installed"
@@ -102,42 +90,52 @@ print_success "kubectl installed"
 # ===============================
 print_header "Installing kubectx & kubens"
 
-print_step "Cloning repository"
-git clone https://github.com/ahmetb/kubectx /opt/kubectx
+git clone https://github.com/ahmetb/kubectx /opt/kubectx || true
 
-print_step "Creating symlinks"
 ln -sf /opt/kubectx/kubectx /usr/local/bin/kubectx
 ln -sf /opt/kubectx/kubens /usr/local/bin/kubens
 
 print_success "kubectx & kubens installed"
 
 # ===============================
-# 🏗 Install eksctl (Latest)
+# 🏗 Install eksctl
 # ===============================
 print_header "Installing eksctl"
 
-print_step "Downloading latest eksctl"
 ARCH=amd64
 PLATFORM=$(uname -s)_$ARCH
 
 curl -sLO "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_${PLATFORM}.tar.gz"
-
-print_step "Extracting eksctl"
 tar -xzf eksctl_${PLATFORM}.tar.gz -C /tmp
-
-print_step "Installing eksctl"
 mv /tmp/eksctl /usr/local/bin
-
 rm eksctl_${PLATFORM}.tar.gz
 
 print_success "eksctl installed"
+
+# ===============================
+# ☁️ Install AWS CLI v2 (Latest)
+# ===============================
+print_header "Installing AWS CLI v2"
+
+print_step "Downloading AWS CLI"
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+
+print_step "Unzipping package"
+unzip -q awscliv2.zip
+
+print_step "Installing AWS CLI"
+./aws/install --update
+
+print_step "Cleaning up"
+rm -rf aws awscliv2.zip
+
+print_success "AWS CLI installed"
 
 # ===============================
 # 🔐 Docker Post Setup
 # ===============================
 print_header "Docker Post Setup"
 
-print_step "Adding current user to docker group"
 usermod -aG docker $SUDO_USER || true
 
 print_success "User added to docker group (logout/login required)"
@@ -152,6 +150,7 @@ kubectl version --client || print_error "kubectl"
 kubectx -h >/dev/null || print_error "kubectx"
 kubens -h >/dev/null || print_error "kubens"
 eksctl version || print_error "eksctl"
+aws --version || print_error "AWS CLI"
 
 print_success "All tools validated"
 
@@ -159,8 +158,12 @@ print_success "All tools validated"
 # 🎉 Done
 # ===============================
 echo -e "${GREEN}"
-echo "🎉 Installation Complete!"
+echo "🎉 DevOps Stack Installation Complete!"
 echo "-------------------------------------"
-echo "Docker, kubectl, kubectx, kubens, eksctl installed"
+echo "✔ Docker"
+echo "✔ kubectl"
+echo "✔ kubectx / kubens"
+echo "✔ eksctl"
+echo "✔ AWS CLI"
 echo "-------------------------------------"
 echo -e "${RESET}"
